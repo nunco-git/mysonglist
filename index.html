@@ -155,8 +155,23 @@ details{background:var(--surface);border:1.5px solid var(--line);border-radius:1
 summary{font-weight:700;cursor:pointer;min-height:32px;display:flex;align-items:center}
 details ol,details ul{margin:8px 0 0;padding-left:1.3em;display:grid;gap:8px;font-size:16px}
 
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(22px,env(safe-area-inset-bottom));width:max-content;max-width:min(92vw,520px);
+.toast{pointer-events:none;position:fixed;left:50%;transform:translateX(-50%);bottom:max(22px,env(safe-area-inset-bottom));width:max-content;max-width:min(92vw,520px);
   background:#2e1c3a;color:#fbf1ee;padding:13px 18px;border-radius:14px;z-index:60;font-size:16px;line-height:1.45;box-shadow:0 8px 28px rgba(0,0,0,.35)}
+
+/* 여러 목록 · 공유 */
+.chips{position:relative;display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:thin}
+.chip{flex:none;display:flex;align-items:center;gap:8px;min-height:50px;padding:0 18px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);font-weight:700}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.chip-c{font-weight:500;font-size:14px;opacity:.8}
+.chip.add{border-style:dashed;background:transparent;color:var(--accent)}
+.list-tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.panel-box,.name-form{margin-top:12px;padding:14px;border-radius:16px;background:var(--raised);display:grid;gap:10px}
+.panel-box label,.name-form label{font-weight:700}
+.panel-box p{margin:0}
+.suggest{display:flex;flex-wrap:wrap;gap:8px}
+.suggest button{min-height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);font-size:15px}
+.incoming{border:1.5px solid var(--accent)}
+.incoming p{margin:0 0 10px;font-weight:500}
 
 @media (prefers-reduced-motion:reduce){
   .disc.playing,.row.is-playing .eq i{animation:none}
@@ -175,6 +190,14 @@ details ol,details ul{margin:8px 0 0;padding-left:1.3em;display:grid;gap:8px;fon
 
   <div id="fileWarn" class="notice warn" hidden>
     이 파일을 폰에서 그냥 열면 유튜브가 재생을 막아요. 웹 주소(예: GitHub Pages)로 올려서 그 주소로 열어 주세요.
+  </div>
+
+  <div id="incoming" class="notice incoming" hidden>
+    <p id="incomingText"></p>
+    <div class="add-actions">
+      <button id="btnIncomingAdd" class="btn primary" type="button">내 목록에 추가</button>
+      <button id="btnIncomingNo" class="btn" type="button">닫기</button>
+    </div>
   </div>
 
   <section class="stage" aria-label="재생">
@@ -216,9 +239,49 @@ details ol,details ul{margin:8px 0 0;padding-left:1.3em;display:grid;gap:8px;fon
     </div>
   </section>
 
+  <section aria-labelledby="lh">
+    <div class="sec-head"><h2 id="lh">내 목록</h2></div>
+    <div id="chips" class="chips"></div>
+    <div class="list-tools">
+      <button id="btnRename" class="btn small" type="button">이름 바꾸기</button>
+      <button id="btnShare" class="btn small" type="button">공유</button>
+      <button id="btnImport" class="btn small" type="button">받은 링크 열기</button>
+      <button id="btnDelList" class="btn small" type="button">목록 삭제</button>
+    </div>
+
+    <form id="nameForm" class="name-form" hidden>
+      <label for="nameInput" id="nameLabel">새 목록 이름</label>
+      <div class="field-row">
+        <input id="nameInput" type="text" maxlength="30" autocomplete="off" placeholder="예: 트로트">
+        <button id="btnNameOk" class="btn primary small" type="submit">만들기</button>
+        <button id="btnNameCancel" class="btn small" type="button">취소</button>
+      </div>
+      <div id="suggest" class="suggest"></div>
+    </form>
+
+    <div id="sharePanel" class="panel-box" hidden>
+      <p id="shareInfo"></p>
+      <div class="add-actions">
+        <button id="btnShareSend" class="btn primary" type="button" disabled>링크 보내기</button>
+        <button id="btnShareCopy" class="btn" type="button" disabled>링크 복사</button>
+        <button id="btnShareClose" class="btn" type="button">닫기</button>
+      </div>
+      <p id="shareNote" class="hint"></p>
+    </div>
+
+    <div id="importPanel" class="panel-box" hidden>
+      <label for="importText">받은 링크를 붙여넣으세요</label>
+      <textarea id="importText" rows="3" spellcheck="false" placeholder="https://…#share=…"></textarea>
+      <div class="add-actions">
+        <button id="btnImportGo" class="btn primary" type="button">불러오기</button>
+        <button id="btnImportClose" class="btn" type="button">닫기</button>
+      </div>
+    </div>
+  </section>
+
   <section aria-labelledby="qh">
     <div class="sec-head">
-      <h2 id="qh">재생목록<span id="count" class="count">0곡</span></h2>
+      <h2 id="qh"><span id="qhName">재생목록</span><span id="count" class="count">0곡</span></h2>
       <div class="sec-actions">
         <button id="btnFind" class="btn small primary" type="button" hidden>영상 찾기</button>
         <button id="btnCopy" class="btn small" type="button" hidden>목록 복사</button>
@@ -232,6 +295,7 @@ details ol,details ul{margin:8px 0 0;padding-left:1.3em;display:grid;gap:8px;fon
 
   <section class="add" aria-labelledby="ah">
     <h2 id="ah">곡 추가</h2>
+    <p id="addTarget" class="hint"></p>
     <label class="sr" for="addText">가수와 제목 또는 유튜브 링크</label>
     <textarea id="addText" rows="5" spellcheck="false" placeholder="임영웅 - 모래 알갱이&#10;송가인 - 엄마아리랑&#10;장윤정 - 어머나&#10;나훈아 - 홍시"></textarea>
     <p class="hint">한 줄에 한 곡, “가수 - 제목” 모양으로 적어 주세요. 유튜브 영상·재생목록 링크도 그대로 붙여넣을 수 있어요.</p>
@@ -364,12 +428,74 @@ function parseLines(text){
   return out;
 }
 
+/* 공유 링크: 목록 → 작은 JSON → (가능하면 압축) → 주소에 쓸 수 있는 글자 */
+function packList(name,songs){
+  return {v:1,n:name,s:songs.map(s=>[s.artist||'',s.title||'',s.kind==='list'?'':(s.videoId||''),s.kind==='list'?(s.listId||''):''])};
+}
+function sanitizeShared(o){
+  if(!o||typeof o!=='object'||o.v!==1||!Array.isArray(o.s)) return null;
+  const clip=(x,n)=>String(x==null?'':x).replace(/[\u0000-\u001f]/g,' ').trim().slice(0,n);
+  const songs=[];
+  for(const it of o.s.slice(0,500)){
+    if(!Array.isArray(it)) continue;
+    const artist=clip(it[0],80), title=clip(it[1],120);
+    let videoId=clip(it[2],20), listId=clip(it[3],80);
+    if(!/^[\w-]{11}$/.test(videoId)) videoId='';
+    if(!/^[\w-]{10,64}$/.test(listId)) listId='';
+    if(listId) songs.push({kind:'list',artist:artist,title:title,listId:listId});
+    else if(videoId||artist||title) songs.push({kind:'video',artist:artist,title:title,videoId:videoId});
+  }
+  if(!songs.length) return null;
+  return {name:clip(o.n,30)||'공유받은 목록',songs:songs};
+}
+function b64url(u8){
+  let s='';
+  for(let i=0;i<u8.length;i+=0x8000) s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));
+  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function unb64url(str){
+  str=String(str).replace(/-/g,'+').replace(/_/g,'/');
+  while(str.length%4) str+='=';
+  const s=atob(str), u8=new Uint8Array(s.length);
+  for(let i=0;i<s.length;i++) u8[i]=s.charCodeAt(i);
+  return u8;
+}
+async function encodeShare(obj){
+  const bytes=new TextEncoder().encode(JSON.stringify(obj));
+  if(typeof CompressionStream!=='undefined'){
+    try{
+      const cs=new CompressionStream('deflate-raw'), w=cs.writable.getWriter();
+      w.write(bytes); w.close();
+      const buf=await new Response(cs.readable).arrayBuffer();
+      return '1'+b64url(new Uint8Array(buf));
+    }catch(e){}
+  }
+  return '0'+b64url(bytes);
+}
+async function decodeShare(code){
+  code=String(code||'');
+  let u8=unb64url(code.slice(1));
+  if(code[0]==='1'){
+    if(typeof DecompressionStream==='undefined') throw new Error('nodecomp');
+    const ds=new DecompressionStream('deflate-raw'), w=ds.writable.getWriter();
+    w.write(u8); w.close();
+    u8=new Uint8Array(await new Response(ds.readable).arrayBuffer());
+  }else if(code[0]!=='0') throw new Error('badcode');
+  return JSON.parse(new TextDecoder().decode(u8));
+}
 function cleanCh(s){ return String(s||'').replace(/\s*-\s*Topic$/i,'').trim(); }
 function fmtTime(sec){ sec=Math.max(0,Math.floor(sec||0)); const m=Math.floor(sec/60), s=sec%60; return m+':'+(s<10?'0':'')+s; }
 /*PURE-END*/
 
 /* ---------- 상태 ---------- */
-const state={songs:[],cur:-1,shuffle:false,repeat:'all',apiKey:'',suffix:'',keepAwake:true,usage:{d:'',n:0}};
+const state={lists:[],activeId:'',shuffle:false,repeat:'all',apiKey:'',suffix:'',keepAwake:true,usage:{d:'',n:0}};
+function makeList(name){ return {id:uid(),name:name,songs:[],cur:-1}; }
+function activeList(){ return state.lists.find(l=>l.id===state.activeId)||state.lists[0]; }
+function listOf(s){ return state.lists.find(l=>l.songs.indexOf(s)>=0); }
+/* 아래 코드 대부분은 "지금 보고 있는 목록"을 state.songs / state.cur 로 그대로 쓴다 */
+Object.defineProperty(state,'songs',{get(){ return activeList().songs; },set(v){ activeList().songs=v; }});
+Object.defineProperty(state,'cur',{get(){ return activeList().cur; },set(v){ activeList().cur=v; }});
+state.lists.push(makeList('내 노래')); state.activeId=state.lists[0].id;
 let player=null, playerReady=false, apiLoading=false, playing=false, loadedId=null, pending=null;
 let liveTitle='', openRow=null, finding=false, seeking=false, played=new Set(), history=[], wl=null, toastTimer=null;
 
@@ -391,8 +517,21 @@ function load(){
   try{
     const raw=localStorage.getItem(LS_KEY); if(!raw) return;
     const d=JSON.parse(raw)||{};
-    if(Array.isArray(d.songs)) state.songs=d.songs.map(normalize).filter(Boolean);
-    state.cur=Number.isInteger(d.cur)&&d.cur>=0&&d.cur<state.songs.length?d.cur:-1;
+    if(Array.isArray(d.lists)&&d.lists.length){
+      state.lists=d.lists.map(l=>{
+        const songs=Array.isArray(l&&l.songs)?l.songs.map(normalize).filter(Boolean):[];
+        const L={id:(l&&typeof l.id==='string'&&l.id)?l.id:uid(),name:String((l&&l.name)||'내 노래').slice(0,30),songs:songs,cur:-1};
+        L.cur=Number.isInteger(l&&l.cur)&&l.cur>=0&&l.cur<songs.length?l.cur:-1;
+        return L;
+      });
+      state.activeId=typeof d.activeId==='string'?d.activeId:'';
+    }else if(Array.isArray(d.songs)){
+      const L=makeList('내 노래');
+      L.songs=d.songs.map(normalize).filter(Boolean);
+      L.cur=Number.isInteger(d.cur)&&d.cur>=0&&d.cur<L.songs.length?d.cur:-1;
+      state.lists=[L];
+    }
+    state.activeId=activeList().id;
     state.shuffle=!!d.shuffle;
     state.repeat=['all','one','off'].indexOf(d.repeat)>=0?d.repeat:'all';
     state.apiKey=typeof d.apiKey==='string'?d.apiKey:'';
@@ -402,7 +541,7 @@ function load(){
   }catch(e){}
 }
 function save(){
-  try{ localStorage.setItem(LS_KEY,JSON.stringify({songs:state.songs,cur:state.cur,shuffle:state.shuffle,repeat:state.repeat,apiKey:state.apiKey,suffix:state.suffix,keepAwake:state.keepAwake,usage:state.usage})); }catch(e){}
+  try{ localStorage.setItem(LS_KEY,JSON.stringify({lists:state.lists.map(l=>({id:l.id,name:l.name,songs:l.songs,cur:l.cur})),activeId:state.activeId,shuffle:state.shuffle,repeat:state.repeat,apiKey:state.apiKey,suffix:state.suffix,keepAwake:state.keepAwake,usage:state.usage})); }catch(e){}
 }
 
 /* ---------- 작은 도구 ---------- */
@@ -507,14 +646,19 @@ async function expandPlaylist(s){
     token=d.nextPageToken; if(!token) break;
   }
   if(!items.length){ toast('재생목록에서 곡을 가져오지 못했어요. 이 목록은 통째로 재생할게요.',5000); return; }
-  const have=new Set(state.songs.map(x=>x.videoId).filter(Boolean));
+  const L=listOf(s); if(!L) return;
+  const have=new Set(L.songs.map(x=>x.videoId).filter(Boolean));
   const fresh=items.filter(x=>!have.has(x.videoId)).map(makeSong);
-  mutate(()=>{ const at=state.songs.indexOf(s); if(at>=0) state.songs.splice(at,1,...fresh); });
+  const curId=L.cur>=0&&L.songs[L.cur]?L.songs[L.cur].id:null;
+  const at=L.songs.indexOf(s);
+  L.songs.splice(at,1,...fresh);
+  L.cur=curId?L.songs.findIndex(x=>x.id===curId):-1;
+  save(); render();
   toast('재생목록에서 '+fresh.length+'곡을 가져왔어요.');
 }
 async function enrich(list){
   for(const s of list){
-    if(state.songs.indexOf(s)<0) continue;
+    if(!listOf(s)) continue;
     try{
       if(s.kind==='list'&&state.apiKey) await expandPlaylist(s);
       else if(s.kind==='video'&&s.videoId&&!s.title) await fillTitle(s);
@@ -536,7 +680,7 @@ async function findAll(){
   if(!todo.length){ toast('찾을 곡이 없어요.'); return; }
   finding=true; let done=0, found=0, miss=0; renderFind(0,todo.length); render();
   for(const s of todo){
-    if(state.songs.indexOf(s)<0){ done++; continue; }
+    if(!listOf(s)){ done++; continue; }
     try{
       await searchSong(s);
       if(s.videoId) found++; else miss++;
@@ -860,7 +1004,7 @@ function render(){
   $('#btnShuffle').setAttribute('aria-pressed',String(state.shuffle));
   const rl={all:'반복: 전체',one:'반복: 한 곡',off:'반복: 끔'};
   $('#btnRepeat').textContent=rl[state.repeat]; $('#btnRepeat').setAttribute('aria-pressed',String(state.repeat!=='off'));
-  updateNow(); updateScreen(); syncPlayState();
+  renderLists(); updateNow(); updateScreen(); syncPlayState();
 }
 
 /* ---------- 곡 추가 · 복사 ---------- */
@@ -908,6 +1052,187 @@ async function copyText(t){
     const ta=h('textarea',{'aria-hidden':'true',style:'position:fixed;left:-9999px;top:0'}); ta.value=t;
     document.body.append(ta); ta.select(); const ok=document.execCommand('copy'); ta.remove(); return ok;
   }catch(e){ return false; }
+}
+
+/* ---------- 여러 목록 · 공유 ---------- */
+let nameMode='new', incoming=null, shareUrl='', delArmed=false, delTimer=null;
+const SUGGEST=['트로트','발라드','7080 가요','민요','팝송','찬송가'];
+
+function stopPlayback(){
+  try{ if(player&&playerReady) player.stopVideo(); }catch(e){}
+  loadedId=null; playing=false; liveTitle=''; releaseAwake(); history=[]; played=new Set();
+}
+function closePanels(){
+  $('#nameForm').hidden=true; $('#sharePanel').hidden=true; $('#importPanel').hidden=true;
+}
+function disarmDel(){ delArmed=false; clearTimeout(delTimer); $('#btnDelList').textContent='목록 삭제'; }
+function switchList(id){
+  if(id===activeList().id) return;
+  stopPlayback(); disarmDel();
+  state.activeId=id; openRow=null; closePanels(); save(); render();
+  toast('‘'+activeList().name+'’ 목록으로 바꿨어요.',2200);
+}
+function renderLists(){
+  const box=$('#chips'), act=activeList();
+  box.textContent='';
+  state.lists.forEach(l=>{
+    const b=h('button',{type:'button',class:'chip'+(l.id===act.id?' on':''),'aria-pressed':String(l.id===act.id)},
+      h('span',{class:'chip-n'},l.name),h('span',{class:'chip-c'},l.songs.length+'곡'));
+    b.addEventListener('click',()=>switchList(l.id));
+    box.append(b);
+  });
+  const add=h('button',{type:'button',class:'chip add'},'+ 새 목록');
+  add.addEventListener('click',()=>openNameForm('new'));
+  box.append(add);
+  const on=box.querySelector('.chip.on');
+  if(on) box.scrollLeft=Math.max(0,on.offsetLeft-box.clientWidth/2+on.offsetWidth/2);
+  $('#qhName').textContent=act.name;
+  $('#addTarget').textContent='‘'+act.name+'’ 목록에 추가돼요.';
+  $('#btnDelList').disabled=state.lists.length<2;
+}
+function openNameForm(mode){
+  nameMode=mode; closePanels();
+  $('#nameForm').hidden=false;
+  $('#nameLabel').textContent=mode==='new'?'새 목록 이름':'목록 이름 바꾸기';
+  $('#btnNameOk').textContent=mode==='new'?'만들기':'바꾸기';
+  $('#suggest').hidden=mode!=='new';
+  const inp=$('#nameInput'); inp.value=mode==='new'?'':activeList().name; inp.focus();
+}
+function submitName(e){
+  e.preventDefault();
+  const name=$('#nameInput').value.replace(/\s+/g,' ').trim().slice(0,30);
+  if(!name){ toast('목록 이름을 적어 주세요.'); return; }
+  if(nameMode==='new'){
+    stopPlayback(); disarmDel();
+    const L=makeList(name); state.lists.push(L); state.activeId=L.id; openRow=null;
+    save(); closePanels(); render();
+    toast('‘'+name+'’ 목록을 만들었어요. 아래에서 곡을 추가해 보세요.',3800);
+  }else{
+    activeList().name=name; save(); closePanels(); render();
+  }
+}
+function deleteList(){
+  if(state.lists.length<2){ toast('목록이 하나뿐이라 삭제할 수 없어요.'); return; }
+  const btn=$('#btnDelList');
+  if(!delArmed){
+    delArmed=true; btn.textContent='정말 삭제? 한 번 더';
+    delTimer=setTimeout(disarmDel,3500); return;
+  }
+  disarmDel(); stopPlayback();
+  const L=activeList(), at=state.lists.indexOf(L);
+  state.lists.splice(at,1);
+  state.activeId=state.lists[Math.max(0,at-1)].id; openRow=null;
+  save(); closePanels(); render();
+  toast('‘'+L.name+'’ 목록을 삭제했어요.');
+}
+
+/* 공유 보내기 */
+async function openShare(){
+  closePanels();
+  const L=activeList();
+  if(!/^https?:$/.test(location.protocol)){ toast('웹 주소로 올려서 연 뒤에 공유할 수 있어요.',4500); return; }
+  if(!L.songs.length){ toast('곡이 들어 있는 목록만 공유할 수 있어요.'); return; }
+  shareUrl='';
+  $('#sharePanel').hidden=false;
+  $('#shareInfo').textContent='‘'+L.name+'’ 목록 '+L.songs.length+'곡을 링크로 보내요.';
+  $('#btnShareSend').disabled=true; $('#btnShareCopy').disabled=true;
+  $('#shareNote').textContent='링크를 만드는 중이에요…';
+  try{
+    const code=await encodeShare(packList(L.name,L.songs));
+    shareUrl=location.origin+location.pathname+'#share='+code;
+    const unresolved=L.songs.filter(s=>s.kind==='video'&&!s.videoId).length;
+    let note='받는 사람이 링크를 열면 “내 목록에 추가” 버튼이 나와요. 영상을 이미 찾은 곡은 받는 사람이 API 키 없이도 바로 들을 수 있어요.';
+    if(unresolved) note+=' 영상을 아직 못 찾은 '+unresolved+'곡은 이름만 전달돼요.';
+    if(shareUrl.length>6000) note+=' 링크가 아주 길어서 일부 메신저에서 잘릴 수 있어요. 목록을 나눠서 보내 보세요.';
+    $('#shareNote').textContent=note;
+    $('#btnShareSend').disabled=false; $('#btnShareCopy').disabled=false;
+  }catch(e){
+    $('#shareNote').textContent='링크를 만들지 못했어요.';
+  }
+}
+async function sendShare(){
+  if(!shareUrl) return;
+  const L=activeList();
+  if(navigator.share){
+    try{
+      await navigator.share({title:'가요 한바탕 · '+L.name,text:'‘'+L.name+'’ 노래 목록('+L.songs.length+'곡)이에요. 링크를 열어 내 목록에 추가해 보세요.',url:shareUrl});
+      return;
+    }catch(e){ if(e&&e.name==='AbortError') return; }
+  }
+  copyShare();
+}
+async function copyShare(){
+  if(!shareUrl) return;
+  toast(await copyText(shareUrl)?'링크를 복사했어요. 카카오톡이나 문자에 붙여넣어 보내세요.':'복사하지 못했어요.',4200);
+}
+
+/* 공유 받기 */
+function extractCode(text){
+  const t=String(text||'').trim();
+  const m=t.match(/share=([\w-]+)/);
+  if(m) return m[1];
+  return /^[01][\w-]{10,}$/.test(t)?t:'';
+}
+function clearHash(){ try{ if(location.hash) window.history.replaceState(null,'',location.pathname+location.search); }catch(e){} }
+async function loadIncoming(code){
+  try{
+    const data=sanitizeShared(await decodeShare(code));
+    if(!data) throw new Error('empty');
+    incoming=data; renderIncoming(); return true;
+  }catch(e){
+    toast(e&&e.message==='nodecomp'?'이 폰의 브라우저가 오래돼서 이 링크를 열 수 없어요. 브라우저를 업데이트해 주세요.':'공유 링크를 읽지 못했어요. 링크가 중간에 잘렸는지 확인해 주세요.',5500);
+    return false;
+  }
+}
+function renderIncoming(){
+  const box=$('#incoming');
+  if(!incoming){ box.hidden=true; return; }
+  const s=incoming.songs;
+  const first=s.slice(0,3).map(x=>[x.artist,x.title].filter(Boolean).join(' - ')||(x.kind==='list'?'유튜브 재생목록':'유튜브 영상')).join(', ');
+  $('#incomingText').textContent='공유받은 목록 ‘'+incoming.name+'’ · '+s.length+'곡 ('+first+(s.length>3?' 외 '+(s.length-3)+'곡':'')+')';
+  box.hidden=false;
+}
+function acceptIncoming(){
+  if(!incoming) return;
+  stopPlayback(); disarmDel();
+  const L=makeList(incoming.name);
+  L.songs=incoming.songs.map(makeSong);
+  state.lists.push(L); state.activeId=L.id; openRow=null;
+  const n=L.songs.length, need=L.songs.some(needsSearch);
+  incoming=null; renderIncoming(); clearHash(); closePanels(); save(); render();
+  toast('‘'+L.name+'’ 목록 '+n+'곡을 추가했어요.',3800);
+  if(need&&state.apiKey) findAll();
+}
+function dismissIncoming(){ incoming=null; renderIncoming(); clearHash(); }
+function checkIncomingHash(){
+  const m=location.hash.match(/^#share=([\w-]+)/);
+  if(m) loadIncoming(m[1]);
+}
+
+function bindLists(){
+  $('#btnRename').addEventListener('click',()=>openNameForm('rename'));
+  $('#btnShare').addEventListener('click',openShare);
+  $('#btnImport').addEventListener('click',()=>{ closePanels(); $('#importPanel').hidden=false; $('#importText').focus(); });
+  $('#btnDelList').addEventListener('click',deleteList);
+  $('#nameForm').addEventListener('submit',submitName);
+  $('#btnNameCancel').addEventListener('click',closePanels);
+  SUGGEST.forEach(t=>{
+    const b=h('button',{type:'button'},t);
+    b.addEventListener('click',()=>{ $('#nameInput').value=t; $('#nameInput').focus(); });
+    $('#suggest').append(b);
+  });
+  $('#btnShareSend').addEventListener('click',sendShare);
+  $('#btnShareCopy').addEventListener('click',copyShare);
+  $('#btnShareClose').addEventListener('click',closePanels);
+  $('#btnImportClose').addEventListener('click',closePanels);
+  $('#btnImportGo').addEventListener('click',async()=>{
+    const code=extractCode($('#importText').value);
+    if(!code){ toast('받은 링크를 그대로 붙여넣어 주세요.'); return; }
+    if(await loadIncoming(code)){ $('#importText').value=''; closePanels(); window.scrollTo({top:0,behavior:'smooth'}); }
+  });
+  $('#btnIncomingAdd').addEventListener('click',acceptIncoming);
+  $('#btnIncomingNo').addEventListener('click',dismissIncoming);
+  window.addEventListener('hashchange',checkIncomingHash);
 }
 
 /* ---------- 설정 ---------- */
@@ -987,9 +1312,11 @@ function tick(){
 /* ---------- 시작 ---------- */
 load();
 bind();
+bindLists();
 setupMediaSession();
 if(location.protocol==='file:') $('#fileWarn').hidden=false;
 render();
+checkIncomingHash();
 ensurePlayer();
 setInterval(tick,500);
 })();
