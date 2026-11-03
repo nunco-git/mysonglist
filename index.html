@@ -105,6 +105,12 @@ h2{margin:0;font:400 22px/1.2 var(--font-display);letter-spacing:.01em}
 .list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 6px;background:var(--surface);border:1.5px solid var(--line);border-radius:16px;padding:6px}
 .row.is-cur{border-color:var(--accent)}
+.row{grid-template-columns:auto minmax(0,1fr) auto}
+.row-handle{width:34px;border:0;background:transparent;color:var(--muted);font-size:22px;line-height:1;border-radius:12px;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
+.row.dragging{border-color:var(--accent);box-shadow:0 10px 28px rgba(0,0,0,.4);position:relative;z-index:3;opacity:.96}
+.row.dragging .row-handle{cursor:grabbing}
+body.guest-view .row{grid-template-columns:minmax(0,1fr) auto}
+body.guest-view .row-handle{display:none!important}
 .row-main{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;min-height:62px;background:transparent;border:0;padding:4px;border-radius:12px;min-width:0}
 .thumb{width:72px;height:54px;border-radius:10px;object-fit:cover;background:var(--raised);display:block}
 .thumb.empty{background:repeating-radial-gradient(circle at center,var(--raised) 0 3px,var(--line) 3px 4px)}
@@ -308,9 +314,9 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
   <section class="add no-view" aria-labelledby="ah">
     <h2 id="ah">곡 추가</h2>
     <p id="addTarget" class="hint"></p>
-    <label class="sr" for="addText">가수와 제목 또는 유튜브 링크</label>
-    <textarea id="addText" rows="5" spellcheck="false" placeholder="임영웅 - 모래 알갱이&#10;송가인 - 엄마아리랑&#10;장윤정 - 어머나&#10;나훈아 - 홍시"></textarea>
-    <p class="hint">한 줄에 한 곡, “가수 - 제목” 모양으로 적어 주세요. 유튜브 영상·재생목록 링크도 그대로 붙여넣을 수 있어요.</p>
+    <label class="sr" for="addText">노래제목과 가수 또는 유튜브 링크</label>
+    <textarea id="addText" rows="5" spellcheck="false" placeholder="모래 알갱이 - 임영웅&#10;엄마아리랑 - 송가인&#10;어머나 - 장윤정&#10;홍시 - 나훈아"></textarea>
+    <p class="hint"><b>입력 규칙</b> · 한 줄에 한 곡, <b>“노래제목 - 가수”</b> 순서로 적어 주세요. 하이픈(-) 앞뒤는 한 칸씩 띄웁니다. 가수를 모르면 제목만 적어도 돼요. 유튜브 영상·재생목록 링크도 그대로 붙여넣을 수 있어요.</p>
     <div class="add-actions">
       <button id="btnAdd" class="btn primary" type="button">목록에 추가</button>
       <button id="btnExample" class="btn" type="button">예시 넣기</button>
@@ -427,10 +433,12 @@ function parseYouTubeUrl(raw){
 function parseName(t){
   t=String(t||'').replace(/\s+/g,' ').trim();
   if(!t) return {artist:'',title:''};
-  let m=t.match(/\s[-–—]\s/);
-  if(!m) m=t.match(/\s*[-–—\/,|·]\s*/);
+  /* 규칙: “노래제목 - 가수” (앞이 제목, 뒤가 가수). 구분은 띄어쓴 하이픈, 없으면 / 또는 | 를 쓴다.
+     제목 안에 하이픈이 있어도 되도록 맨 마지막 구분자에서 나눈다. */
+  function lastMatch(re){ let m,last=null; while((m=re.exec(t))) last=m; return last; }
+  const m=lastMatch(/\s[-–—]\s/g)||lastMatch(/\s*[\/|]\s*/g);
   if(m && m.index>0 && m.index+m[0].length<t.length){
-    return {artist:t.slice(0,m.index).trim(), title:t.slice(m.index+m[0].length).trim()};
+    return {title:t.slice(0,m.index).trim(), artist:t.slice(m.index+m[0].length).trim()};
   }
   return {artist:'',title:t};
 }
@@ -1116,9 +1124,68 @@ function rowEl(s,i){
   const open=!readOnly()&&openRow===s.id;
   const more=h('button',{class:'row-more',type:'button','aria-expanded':String(open)},open?'접기':'편집');
   more.addEventListener('click',()=>{ openRow=open?null:s.id; render(); });
-  li.append(main,more);
+  const grip=h('button',{class:'row-handle',type:'button','aria-label':titleOf(s)+' 끌어서 순서 바꾸기',title:'끌어서 순서 바꾸기'},'≡');
+  grip.addEventListener('pointerdown',ev=>startDrag(ev,li));
+  li.append(grip,main,more);
   if(open) li.append(panelEl(s,i));
   return li;
+}
+
+/* 끌어서 순서 바꾸기: 왼쪽 ≡ 손잡이를 누른 채 위아래로 움직이면 곡이 따라 움직인다.
+   끄는 동안 목록 DOM은 그대로 두고 transform 으로만 움직이고, 손을 떼면 한 번에 순서를 바꾼다. */
+function startDrag(ev,li){
+  if(readOnly()||(ev.button!=null&&ev.button>0)) return;
+  ev.preventDefault();
+  const list=li.parentNode, handle=ev.currentTarget, pid=ev.pointerId;
+  const rows=Array.prototype.slice.call(list.children);
+  const idx=rows.indexOf(li); if(idx<0) return;
+  const sy0=window.scrollY;
+  const geo=rows.map(r=>{ const b=r.getBoundingClientRect(); return {top:b.top+sy0,h:b.height}; });
+  const step=geo[idx].h+8;
+  const startY=ev.clientY+sy0;
+  let lastY=ev.clientY, raf=0, done=false, target=idx;
+  try{ handle.setPointerCapture(pid); }catch(e){}
+  li.classList.add('dragging');
+  rows.forEach((r,j)=>{ if(j!==idx) r.style.transition='transform .12s'; });
+  function frame(){
+    if(done) return;
+    const edge=90, vh=window.innerHeight;
+    if(lastY<edge) window.scrollBy(0,-Math.ceil((edge-lastY)/5));
+    else if(lastY>vh-edge) window.scrollBy(0,Math.ceil((lastY-(vh-edge))/5));
+    const dy=(lastY+window.scrollY)-startY;
+    li.style.transform='translateY('+dy+'px)';
+    const mid=geo[idx].top+geo[idx].h/2+dy;
+    let t=idx;
+    for(let j=0;j<rows.length;j++){
+      if(j===idx) continue;
+      const c=geo[j].top+geo[j].h/2;
+      if(j<idx&&mid<c){ rows[j].style.transform='translateY('+step+'px)'; t--; }
+      else if(j>idx&&mid>c){ rows[j].style.transform='translateY('+(-step)+'px)'; t++; }
+      else rows[j].style.transform='';
+    }
+    target=t;
+    raf=requestAnimationFrame(frame);
+  }
+  function onMove(e){ if(e.pointerId===pid) lastY=e.clientY; }
+  function finish(e,cancel){
+    if(e&&e.pointerId!==pid) return;
+    if(done) return; done=true; cancelAnimationFrame(raf);
+    window.removeEventListener('pointermove',onMove);
+    window.removeEventListener('pointerup',onUp);
+    window.removeEventListener('pointercancel',onCancel);
+    try{ handle.releasePointerCapture(pid); }catch(e2){}
+    rows.forEach(r=>{ r.style.transform=''; r.style.transition=''; });
+    li.classList.remove('dragging');
+    if(cancel||target===idx||!li.isConnected||list.children.length!==rows.length){ render(); return; }
+    const moving=state.songs[idx]; if(!moving||moving.id!==li.dataset.id){ render(); return; }
+    mutate(()=>{ const a=state.songs; a.splice(idx,1); a.splice(target,0,moving); });
+  }
+  function onUp(e){ finish(e,false); }
+  function onCancel(e){ finish(e,true); }
+  window.addEventListener('pointermove',onMove);
+  window.addEventListener('pointerup',onUp);
+  window.addEventListener('pointercancel',onCancel);
+  raf=requestAnimationFrame(frame);
 }
 function panelEl(s,i){
   const p=h('div',{class:'row-panel'});
@@ -1217,8 +1284,8 @@ function onAdd(){
 }
 function exportText(){
   return state.songs.map(s=>{
-    const name=[s.artist,s.title].filter(Boolean).join(' - ');
-    if(s.kind==='list') return (s.title?s.title+' ':'')+'https://www.youtube.com/playlist?list='+s.listId;
+    const name=[s.title,s.artist].filter(Boolean).join(' - ');
+    if(s.kind==='list') return (name?name+' ':'')+'https://www.youtube.com/playlist?list='+s.listId;
     if(s.videoId) return (name?name+' ':'')+'https://youtu.be/'+s.videoId;
     return name;
   }).join('\n');
@@ -1497,7 +1564,7 @@ function bind(){
   $('#btnAdd').addEventListener('click',onAdd);
   $('#btnExample').addEventListener('click',()=>{
     const box=$('#addText');
-    box.value=(box.value?box.value.replace(/\s*$/,'\n'):'')+'임영웅 - 모래 알갱이\n송가인 - 엄마아리랑\n장윤정 - 어머나\n영탁 - 막걸리 한잔\n나훈아 - 홍시';
+    box.value=(box.value?box.value.replace(/\s*$/,'\n'):'')+'모래 알갱이 - 임영웅\n엄마아리랑 - 송가인\n어머나 - 장윤정\n막걸리 한잔 - 영탁\n홍시 - 나훈아';
     box.focus();
   });
   $('#btnFind').addEventListener('click',findAll);
