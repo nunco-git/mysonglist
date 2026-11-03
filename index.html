@@ -138,19 +138,26 @@ body.guest-view .row-handle{display:none!important}
 .empty-msg{margin:0;padding:18px;border:1.5px dashed var(--line);border-radius:16px;color:var(--muted);text-align:center}
 
 /* 곡 추가 */
-.add{display:grid;gap:12px}
+.add-panel{margin-top:10px}
+.pick-row{display:flex;gap:10px;align-items:stretch}
+.list-select{flex:1 1 auto;min-width:0;min-height:52px;padding:0 44px 0 16px;border-radius:14px;border:1.5px solid var(--line);background-color:var(--surface);color:var(--ink);font:700 17px var(--font-body);appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 16px center;text-overflow:ellipsis}
+.list-select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.pick-row .btn{flex:none;min-height:52px;white-space:nowrap}
+body.guest .pick-row .btn{flex:1}
 textarea{width:100%;min-height:140px;padding:14px;border-radius:16px;border:1.5px solid var(--line);background:var(--surface);font-size:17px;line-height:1.6;resize:vertical}
 textarea::placeholder,input::placeholder{color:var(--muted);opacity:.75}
 .hint{margin:0;font-size:14px;color:var(--muted)}
 .add-actions{display:flex;gap:10px;flex-wrap:wrap}
 .add-actions .primary{flex:1 1 180px}
-.add-form{display:grid;gap:12px}
-.f{display:grid;gap:5px}
+.add-form{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.f{display:grid;grid-template-columns:minmax(0,1fr);gap:5px}
 .f label{font-weight:700}
 .f em{font-style:normal;font-weight:500;font-size:13px;color:var(--muted);margin-left:6px}
 .f input{width:100%}
 .bulk summary{font-weight:700;cursor:pointer;min-height:28px}
-.bulk-body{display:grid;gap:12px;margin-top:12px}
+.bulk-body{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
 .edit-fields{display:grid;gap:8px}
 .edit-fields .f label{font-size:14px}
 .edit-fields input{min-height:44px;font-size:16px}
@@ -175,13 +182,8 @@ details ol,details ul{margin:8px 0 0;padding-left:1.3em;display:grid;gap:8px;fon
   background:#2e1c3a;color:#fbf1ee;padding:13px 18px;border-radius:14px;z-index:60;font-size:16px;line-height:1.45;box-shadow:0 8px 28px rgba(0,0,0,.35)}
 
 /* 여러 목록 · 공유 */
-.chips{position:relative;display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:thin}
-.chip{flex:none;display:flex;align-items:center;gap:8px;min-height:50px;padding:0 18px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);font-weight:700}
-.chip.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
-.chip-c{font-weight:500;font-size:14px;opacity:.8}
-.chip.add{border-style:dashed;background:transparent;color:var(--accent)}
 .list-tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.panel-box,.name-form{margin-top:12px;padding:14px;border-radius:16px;background:var(--raised);display:grid;gap:10px}
+.panel-box,.name-form{margin-top:12px;padding:14px;border-radius:16px;background:var(--raised);display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
 .panel-box label,.name-form label{font-weight:700}
 .panel-box p{margin:0}
 .suggest{display:flex;flex-wrap:wrap;gap:8px}
@@ -262,9 +264,52 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
     </div>
   </section>
 
-  <section class="no-guest" aria-labelledby="lh">
-    <div class="sec-head"><h2 id="lh">내 목록</h2></div>
-    <div id="chips" class="chips"></div>
+  <section class="picker" aria-labelledby="lh">
+    <div class="sec-head no-guest"><h2 id="lh">내 목록</h2></div>
+    <div class="pick-row">
+      <select id="listSelect" class="list-select no-guest" aria-label="내 목록 고르기"></select>
+      <button id="btnAddToggle" class="btn primary no-view" type="button" aria-expanded="false" aria-controls="addPanel">＋ 곡 추가</button>
+    </div>
+    <div id="addPanel" class="panel-box add-panel no-view" hidden>
+      <p id="addTarget" class="hint"></p>
+      <form id="addForm" class="add-form" autocomplete="off" novalidate>
+        <div class="f">
+          <label for="fTitle">노래제목 <em>꼭 적기</em></label>
+          <input id="fTitle" type="text" enterkeyhint="next" placeholder="예: 모래 알갱이">
+        </div>
+        <div class="f">
+          <label for="fArtist">가수 <em>적으면 영상을 더 정확히 찾아요</em></label>
+          <input id="fArtist" type="text" enterkeyhint="next" placeholder="예: 임영웅">
+        </div>
+        <div class="f">
+          <label for="fWork">작품 <em>선택 · 드라마·영화·앨범·방송 이름</em></label>
+          <input id="fWork" type="text" enterkeyhint="done" placeholder="예: 미스터트롯">
+        </div>
+        <div class="add-actions">
+          <button id="btnAddOne" class="btn primary" type="submit">목록에 추가</button>
+          <button id="btnAddClose" class="btn" type="button">접기</button>
+        </div>
+      </form>
+      <details class="bulk" id="bulk">
+        <summary>여러 곡을 한꺼번에 · 유튜브 링크로 추가</summary>
+        <div class="bulk-body">
+          <label class="sr" for="addText">노래제목과 가수 또는 유튜브 링크</label>
+          <textarea id="addText" rows="5" spellcheck="false" placeholder="모래 알갱이 - 임영웅&#10;엄마아리랑 - 송가인&#10;어머나 - 장윤정 [작품 이름]&#10;https://youtu.be/…"></textarea>
+          <p class="hint"><b>입력 규칙</b> · 한 줄에 한 곡, <b>“노래제목 - 가수”</b> 순서로 적어요. 하이픈(-) 앞뒤는 한 칸씩 띄우고, 작품은 끝에 <b>[작품]</b> 으로 붙여요. 제목만 적어도 되고, 유튜브 영상·재생목록 링크도 그대로 붙여넣을 수 있어요.</p>
+          <div class="add-actions">
+            <button id="btnAdd" class="btn primary" type="button">목록에 추가</button>
+            <button id="btnExample" class="btn" type="button">예시 넣기</button>
+          </div>
+        </div>
+      </details>
+      <div id="keyHint" class="notice" hidden>
+        API 키가 없으면 가수·제목으로 영상을 찾을 수 없어요. 유튜브 링크는 키 없이도 바로 재생돼요.
+        <br><button id="btnHintSettings" class="btn small" type="button">설정 열기</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="no-guest" aria-label="목록 관리">
     <div class="list-tools">
       <button id="btnRename" class="btn small" type="button">이름 바꾸기</button>
       <button id="btnShare" class="btn small" type="button">공유</button>
@@ -318,43 +363,7 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
     </div>
     <div id="findBar" class="notice find-bar" role="status" hidden></div>
     <ol id="list" class="list"></ol>
-    <p id="emptyMsg" class="empty-msg">아직 곡이 없어요. 아래 칸에 가수와 제목을 적어서 추가해 보세요.</p>
-  </section>
-
-  <section class="add no-view" aria-labelledby="ah">
-    <h2 id="ah">곡 추가</h2>
-    <p id="addTarget" class="hint"></p>
-    <form id="addForm" class="add-form" autocomplete="off" novalidate>
-      <div class="f">
-        <label for="fTitle">노래제목 <em>꼭 적기</em></label>
-        <input id="fTitle" type="text" enterkeyhint="next" placeholder="예: 모래 알갱이">
-      </div>
-      <div class="f">
-        <label for="fArtist">가수 <em>적으면 영상을 더 정확히 찾아요</em></label>
-        <input id="fArtist" type="text" enterkeyhint="next" placeholder="예: 임영웅">
-      </div>
-      <div class="f">
-        <label for="fWork">작품 <em>선택 · 드라마·영화·앨범·방송 이름</em></label>
-        <input id="fWork" type="text" enterkeyhint="done" placeholder="예: 미스터트롯">
-      </div>
-      <button id="btnAddOne" class="btn primary" type="submit">목록에 추가</button>
-    </form>
-    <details class="bulk" id="bulk">
-      <summary>여러 곡을 한꺼번에 · 유튜브 링크로 추가</summary>
-      <div class="bulk-body">
-        <label class="sr" for="addText">노래제목과 가수 또는 유튜브 링크</label>
-        <textarea id="addText" rows="5" spellcheck="false" placeholder="모래 알갱이 - 임영웅&#10;엄마아리랑 - 송가인&#10;어머나 - 장윤정 [작품 이름]&#10;https://youtu.be/…"></textarea>
-        <p class="hint"><b>입력 규칙</b> · 한 줄에 한 곡, <b>“노래제목 - 가수”</b> 순서로 적어요. 하이픈(-) 앞뒤는 한 칸씩 띄우고, 작품은 끝에 <b>[작품]</b> 으로 붙여요. 제목만 적어도 되고, 유튜브 영상·재생목록 링크도 그대로 붙여넣을 수 있어요.</p>
-        <div class="add-actions">
-          <button id="btnAdd" class="btn primary" type="button">목록에 추가</button>
-          <button id="btnExample" class="btn" type="button">예시 넣기</button>
-        </div>
-      </div>
-    </details>
-    <div id="keyHint" class="notice" hidden>
-      API 키가 없으면 가수·제목으로 영상을 찾을 수 없어요. 유튜브 링크는 키 없이도 바로 재생돼요.
-      <br><button id="btnHintSettings" class="btn small" type="button">설정 열기</button>
-    </div>
+    <p id="emptyMsg" class="empty-msg">아직 곡이 없어요. 위의 ‘곡 추가’ 버튼을 눌러 노래제목과 가수를 적어 보세요.</p>
   </section>
 </div>
 
@@ -1011,7 +1020,7 @@ function playIndex(i){
   });
 }
 function togglePlay(){
-  if(!state.songs.length){ toast('먼저 곡을 추가해 주세요.'); $('#fTitle').focus(); return; }
+  if(!state.songs.length){ toast('먼저 곡을 추가해 주세요.'); openAddPanel(true); return; }
   const s=curSong();
   if(!s||loadedId!==s.id){
     const i=playable(s)?state.cur:firstPlayable();
@@ -1382,23 +1391,29 @@ function switchList(id){
   toast('‘'+activeList().name+'’ 목록으로 바꿨어요.',2200);
 }
 function renderLists(){
-  const box=$('#chips'), act=activeList();
-  box.textContent='';
+  const sel=$('#listSelect'), act=activeList();
+  sel.textContent='';
   state.lists.forEach(l=>{
-    const b=h('button',{type:'button',class:'chip'+(l.id===act.id?' on':''),'aria-pressed':String(l.id===act.id)},
-      h('span',{class:'chip-n'},l.name),h('span',{class:'chip-c'},l.songs.length+'곡'));
-    b.addEventListener('click',()=>switchList(l.id));
-    box.append(b);
+    const o=h('option',{value:l.id},l.name+' · '+l.songs.length+'곡');
+    sel.append(o);
   });
-  const add=h('button',{type:'button',class:'chip add'},'+ 새 목록');
-  add.addEventListener('click',()=>openNameForm('new'));
-  box.append(add);
-  const on=box.querySelector('.chip.on');
-  if(on) box.scrollLeft=Math.max(0,on.offsetLeft-box.clientWidth/2+on.offsetWidth/2);
+  sel.append(h('option',{value:'__new'},'＋ 새 목록 만들기…'));
+  sel.value=act.id;
   $('#qhName').textContent=act.name;
   $('#addTarget').textContent='‘'+act.name+'’ 목록에 추가돼요.';
   $('#btnDelList').disabled=state.lists.length<2;
 }
+function openAddPanel(focus){
+  if(readOnly()) return;
+  $('#addPanel').hidden=false;
+  $('#btnAddToggle').setAttribute('aria-expanded','true'); $('#btnAddToggle').textContent='곡 추가 접기 ▲';
+  if(focus) $('#fTitle').focus();
+}
+function closeAddPanel(){
+  $('#addPanel').hidden=true;
+  $('#btnAddToggle').setAttribute('aria-expanded','false'); $('#btnAddToggle').textContent='＋ 곡 추가';
+}
+function toggleAddPanel(){ if($('#addPanel').hidden) openAddPanel(true); else closeAddPanel(); }
 function openNameForm(mode){
   if(guest) return;
   nameMode=mode; closePanels();
@@ -1416,7 +1431,7 @@ function submitName(e){
     stopPlayback(); disarmDel();
     const L=makeList(name); state.lists.push(L); state.activeId=L.id; openRow=null;
     save(); closePanels(); render();
-    toast('‘'+name+'’ 목록을 만들었어요. 아래에서 곡을 추가해 보세요.',3800);
+    toast('‘'+name+'’ 목록을 만들었어요. 곡을 추가해 보세요.',3800); openAddPanel(true);
   }else{
     activeList().name=name; save(); closePanels(); render();
   }
@@ -1569,6 +1584,13 @@ function checkIncomingHash(){
 }
 
 function bindLists(){
+  $('#listSelect').addEventListener('change',e=>{
+    const v=e.target.value;
+    if(v==='__new'){ e.target.value=activeList().id; openNameForm('new'); $('#nameForm').scrollIntoView({block:'center',behavior:'smooth'}); return; }
+    switchList(v);
+  });
+  $('#btnAddToggle').addEventListener('click',toggleAddPanel);
+  $('#btnAddClose').addEventListener('click',closeAddPanel);
   $('#btnRename').addEventListener('click',()=>openNameForm('rename'));
   $('#btnShare').addEventListener('click',openShare);
   $('#btnImport').addEventListener('click',()=>{ closePanels(); $('#importPanel').hidden=false; $('#importText').focus(); });
