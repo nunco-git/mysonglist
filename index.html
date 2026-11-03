@@ -392,6 +392,7 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
       </div>
       <p class="hint">로그인하지 않으면 이 폰의 브라우저에만 저장돼요.</p>
       <p id="usage" class="hint"></p>
+      <p class="hint">유튜브 규정에 따라 API로 받은 영상 정보는 30일마다 자동으로 새로 확인해요. 이때 후보 영상 목록은 지워지고, 키가 있으면 영상이 아직 재생 가능한지도 다시 확인해요.</p>
     </div>
 
     <div class="field">
@@ -578,7 +579,7 @@ let liveTitle='', openRow=null, finding=false, seeking=false, played=new Set(), 
 function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
 function makeSong(p){
   return {id:uid(),kind:p.kind==='list'?'list':'video',artist:p.artist||'',title:p.title||'',work:String(p.work||'').slice(0,60),
-    videoId:p.videoId||'',listId:p.listId||'',cands:[],ci:0,noResult:false,dead:false};
+    videoId:p.videoId||'',listId:p.listId||'',cands:[],ci:0,noResult:false,dead:false,at:+p.at>0?+p.at:0,auto:!!p.auto};
 }
 function normalize(s){
   if(!s||typeof s!=='object') return null;
@@ -669,7 +670,7 @@ function loadFirebase(){
 }
 function cloudSnap(){
   return {
-    lists:state.lists.map(l=>({id:l.id,name:l.name,cur:l.cur,songs:l.songs.map(s=>({id:s.id,kind:s.kind,artist:s.artist,title:s.title,work:s.work||'',videoId:s.videoId,listId:s.listId,ci:0,noResult:s.noResult,dead:s.dead}))})),
+    lists:state.lists.map(l=>({id:l.id,name:l.name,cur:l.cur,songs:l.songs.map(s=>({id:s.id,kind:s.kind,artist:s.artist,title:s.title,work:s.work||'',videoId:s.videoId,listId:s.listId,ci:0,noResult:s.noResult,dead:s.dead,at:s.at||0,auto:!!s.auto}))})),
     activeId:state.activeId,shuffle:state.shuffle,repeat:state.repeat,apiKey:state.apiKey,suffix:state.suffix,keepAwake:state.keepAwake
   };
 }
@@ -844,13 +845,13 @@ async function searchSong(s){
   const d=await yt('search',{part:'snippet',type:'video',maxResults:5,videoEmbeddable:'true',videoSyndicated:'true',regionCode:'KR',relevanceLanguage:'ko',q:queryOf(s)});
   bumpUsage();
   const cands=(d.items||[]).filter(i=>i.id&&i.id.videoId).map(i=>({id:i.id.videoId,title:decode(i.snippet.title),ch:decode(i.snippet.channelTitle)}));
-  s.cands=cands; s.ci=0; s.videoId=cands[0]?cands[0].id:''; s.noResult=!cands.length; s.dead=false;
+  s.cands=cands; s.ci=0; s.videoId=cands[0]?cands[0].id:''; s.noResult=!cands.length; s.dead=false; s.at=Date.now();
 }
 async function fillTitle(s){
   if(state.apiKey){
     const d=await yt('videos',{part:'snippet',id:s.videoId});
     const sn=d.items&&d.items[0]&&d.items[0].snippet;
-    if(sn){ s.title=decode(sn.title); if(!s.artist) s.artist=cleanCh(decode(sn.channelTitle)); }
+    if(sn){ s.title=decode(sn.title); if(!s.artist) s.artist=cleanCh(decode(sn.channelTitle)); s.auto=true; s.at=Date.now(); }
     return;
   }
   const r=await fetch('https://www.youtube.com/oembed?format=json&url='+encodeURIComponent('https://www.youtube.com/watch?v='+s.videoId));
@@ -867,7 +868,7 @@ async function expandPlaylist(s){
     (d.items||[]).forEach(it=>{
       const sn=it.snippet||{}; const id=sn.resourceId&&sn.resourceId.videoId; const t=decode(sn.title||'');
       if(!id||/^(Private|Deleted) video$/i.test(t)) return;
-      items.push({kind:'video',videoId:id,title:t,artist:cleanCh(decode(sn.videoOwnerChannelTitle||''))});
+      items.push({kind:'video',videoId:id,title:t,artist:cleanCh(decode(sn.videoOwnerChannelTitle||'')),auto:true,at:Date.now()});
     });
     token=d.nextPageToken; if(!token) break;
   }
@@ -891,6 +892,50 @@ async function enrich(list){
     }catch(e){ if(e.fatal&&e.reason!=='network') toast(e.message,6000); }
   }
   save(); render();
+}
+
+
+/* ---------- 30일 지난 유튜브 정보 새로 확인 ----------
+   유튜브 API 정책상 API로 받은 정보는 30일을 넘겨 보관하지 않는다.
+   30일이 지난 곡은 영상 상태를 다시 확인(50곡에 1점)해서 정보를 새로 받고, 후보 영상 목록은 지운다.
+   키가 없으면 후보 목록만 지우고, 인터넷이 안 되면 그냥 다음에 한다. */
+const API_TTL=30*24*3600*1000;
+let refreshing=false;
+async function refreshStale(){
+  if(refreshing) return; refreshing=true;
+  try{
+    const now=Date.now(); let changed=false;
+    const all=[]; state.lists.forEach(l=>l.songs.forEach(x=>all.push(x)));
+    all.forEach(x=>{ if(!x.at&&x.cands&&x.cands.length){ x.at=now; changed=true; } });
+    const stale=all.filter(x=>x.at&&now-x.at>API_TTL);
+    if(stale.length){
+      let done=false, offline=false;
+      if(state.apiKey&&webOk()){
+        const ids=[]; stale.forEach(x=>{ if(x.kind==='video'&&x.videoId&&ids.indexOf(x.videoId)<0) ids.push(x.videoId); });
+        try{
+          const ok=new Map();
+          for(let i=0;i<ids.length;i+=50){
+            const d=await yt('videos',{part:'snippet,status',id:ids.slice(i,i+50).join(',')});
+            (d.items||[]).forEach(it=>ok.set(it.id,it));
+          }
+          stale.forEach(x=>{
+            if(x.kind==='video'&&x.videoId){
+              const it=ok.get(x.videoId);
+              if(it&&!(it.status&&it.status.embeddable===false)){
+                if(x.auto&&it.snippet&&it.snippet.title) x.title=decode(it.snippet.title);
+                x.dead=false;
+              }else x.dead=true;
+            }
+            x.cands=[]; x.ci=0; x.at=now;
+          });
+          done=true; changed=true;
+        }catch(e){ offline=!!(e&&e.reason==='network'); }
+      }
+      if(!done&&!offline) stale.forEach(x=>{ if(x.cands&&x.cands.length){ x.cands=[]; x.ci=0; changed=true; } });
+    }
+    if(changed){ save(); render(); }
+  }catch(e){}
+  finally{ refreshing=false; }
 }
 
 /* ---------- 영상 찾기 ---------- */
@@ -1709,6 +1754,7 @@ if(location.protocol==='file:') $('#fileWarn').hidden=false;
 render();
 checkIncomingHash();
 if(webOk()&&lsGet(SYNC_ON)==='1') loadFirebase().catch(function(){});
+setTimeout(refreshStale,1500);
 ensurePlayer();
 setInterval(tick,500);
 })();
