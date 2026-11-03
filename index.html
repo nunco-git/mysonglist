@@ -67,34 +67,35 @@ h2{margin:0;font:400 22px/1.2 var(--font-display);letter-spacing:.01em}
 .notice button{margin-top:6px}
 
 /* 무대 */
-.stage{display:grid;gap:16px;background:var(--stage);color:var(--on-stage);border-radius:24px;padding:14px 14px 20px}
-.screen{position:relative;aspect-ratio:16/9;background:#000;border-radius:16px;overflow:hidden;max-width:100%}
+.stage{display:grid;gap:8px;background:var(--stage);color:var(--on-stage);border-radius:20px;padding:10px 10px 12px}
+.screen{position:relative;aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden;max-width:100%}
 .screen iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .screen-msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;background:#0c0711;color:var(--stage-muted);font-size:17px}
 .screen-msg p{margin:0;max-width:18em}
-.now{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.now{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center}
 .disc{
-  position:relative;width:62px;height:62px;border-radius:50%;flex:none;
+  position:relative;width:42px;height:42px;border-radius:50%;flex:none;
   background:repeating-radial-gradient(circle at center,#150b1a 0 2px,#2a1834 2px 3px);
   box-shadow:0 0 0 2px #3a2447;
 }
-.disc::before{content:"";position:absolute;inset:19px;border-radius:50%;background:var(--stage-pink)}
-.disc::after{content:"";position:absolute;inset:29px;border-radius:50%;background:var(--stage)}
+.disc::before{content:"";position:absolute;inset:13px;border-radius:50%;background:var(--stage-pink)}
+.disc::after{content:"";position:absolute;inset:19px;border-radius:50%;background:var(--stage)}
 .disc.playing{animation:spin 3.4s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .now-text{min-width:0}
-.now-title{font:400 27px/1.2 var(--font-display);overflow-wrap:anywhere;text-wrap:balance}
-.now-artist{color:var(--stage-gold);font-weight:500;font-size:18px;margin-top:2px;overflow-wrap:anywhere}
-.seek{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font-size:14px;color:var(--stage-muted);font-variant-numeric:tabular-nums}
-.seek input{width:100%;height:36px;accent-color:var(--stage-pink);margin:0}
-.transport{display:flex;justify-content:center;align-items:center;gap:22px}
-.t-btn{width:64px;height:64px;border-radius:50%;border:0;background:var(--stage-2);color:var(--on-stage);display:grid;place-items:center;padding:0}
-.t-btn svg{width:30px;height:30px;fill:currentColor}
-.t-btn.big{width:92px;height:92px;background:var(--stage-pink);color:#2b0a1a}
-.t-btn.big svg{width:46px;height:46px}
+.now-title{font:400 20px/1.25 var(--font-display);overflow-wrap:anywhere;text-wrap:balance}
+.now-artist{color:var(--stage-gold);font-weight:500;font-size:15px;margin-top:0;overflow-wrap:anywhere}
+.seek{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font-size:13px;color:var(--stage-muted);font-variant-numeric:tabular-nums}
+.seek input{width:100%;height:28px;accent-color:var(--stage-pink);margin:0}
+.transport{display:flex;justify-content:center;align-items:center;gap:18px}
+.t-btn{width:46px;height:46px;border-radius:50%;border:0;background:var(--stage-2);color:var(--on-stage);display:grid;place-items:center;padding:0}
+.t-btn svg{width:22px;height:22px;fill:currentColor}
+.t-btn.big{width:58px;height:58px;background:var(--stage-pink);color:#2b0a1a}
+.t-btn.big svg{width:30px;height:30px}
 .t-btn:active{transform:scale(.96)}
-.modes{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.mode{min-height:46px;padding:0 18px;border-radius:999px;border:1.5px solid var(--stage-line);background:transparent;color:var(--stage-muted);font-weight:500}
+.modes{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.mode{min-height:38px;padding:0 13px;font-size:14px;border-radius:999px;border:1.5px solid var(--stage-line);background:transparent;color:var(--stage-muted);font-weight:500}
+.mode:disabled{opacity:.45}
 .mode[aria-pressed="true"]{background:var(--stage-gold);border-color:var(--stage-gold);color:#2b1a00;font-weight:700}
 
 /* 재생목록 */
@@ -261,6 +262,7 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
     <div class="modes">
       <button id="btnShuffle" class="mode" type="button" aria-pressed="false">섞어서 듣기</button>
       <button id="btnRepeat" class="mode" type="button" aria-pressed="true">반복: 전체</button>
+      <button id="btnTimes" class="mode" type="button" aria-pressed="false" title="한 곡을 몇 번 듣고 다음 곡으로 넘어갈지">곡당 1회</button>
     </div>
   </section>
 
@@ -563,7 +565,7 @@ function fmtTime(sec){ sec=Math.max(0,Math.floor(sec||0)); const m=Math.floor(se
 /*PURE-END*/
 
 /* ---------- 상태 ---------- */
-const state={lists:[],activeId:'',shuffle:false,repeat:'all',apiKey:'',suffix:'',keepAwake:true,usage:{d:'',n:0}};
+const state={lists:[],activeId:'',shuffle:false,repeat:'all',times:1,apiKey:'',suffix:'',keepAwake:true,usage:{d:'',n:0}};
 function makeList(name){ return {id:uid(),name:name,songs:[],cur:-1}; }
 let guest=null; /* 수정 불가로 받은 목록(저장 안 됨) */
 function activeList(){ if(guest) return guest; return state.lists.find(l=>l.id===state.activeId)||state.lists[0]; }
@@ -573,7 +575,8 @@ function readOnly(){ return !!guest&&guest.gmode==='view'; }
 Object.defineProperty(state,'songs',{get(){ return activeList().songs; },set(v){ activeList().songs=v; }});
 Object.defineProperty(state,'cur',{get(){ return activeList().cur; },set(v){ activeList().cur=v; }});
 state.lists.push(makeList('내 노래')); state.activeId=state.lists[0].id;
-let player=null, playerReady=false, apiLoading=false, playing=false, loadedId=null, pending=null;
+let player=null, playerReady=false, apiLoading=false, playing=false, loadedId=null, pending=null, plays=0;
+const TIMES=[1,2,3,5,10];
 let liveTitle='', openRow=null, finding=false, seeking=false, played=new Set(), history=[], wl=null, toastTimer=null;
 
 function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
@@ -615,6 +618,7 @@ function applyData(d){
     state.activeId=activeList().id;
     state.shuffle=!!d.shuffle;
     state.repeat=['all','one','off'].indexOf(d.repeat)>=0?d.repeat:'all';
+    state.times=TIMES.indexOf(d.times)>=0?d.times:1;
     state.apiKey=typeof d.apiKey==='string'?d.apiKey:'';
     state.suffix=typeof d.suffix==='string'?d.suffix:'';
     state.keepAwake=d.keepAwake!==false;
@@ -639,7 +643,7 @@ function save(){
   if(!guest) markDirty();
 }
 function saveLocal(){
-  try{ localStorage.setItem(LS_KEY,JSON.stringify({lists:state.lists.map(l=>({id:l.id,name:l.name,songs:l.songs,cur:l.cur})),activeId:state.activeId,shuffle:state.shuffle,repeat:state.repeat,apiKey:state.apiKey,suffix:state.suffix,keepAwake:state.keepAwake,usage:state.usage})); }catch(e){}
+  try{ localStorage.setItem(LS_KEY,JSON.stringify({lists:state.lists.map(l=>({id:l.id,name:l.name,songs:l.songs,cur:l.cur})),activeId:state.activeId,shuffle:state.shuffle,repeat:state.repeat,times:state.times,apiKey:state.apiKey,suffix:state.suffix,keepAwake:state.keepAwake,usage:state.usage})); }catch(e){}
 }
 
 
@@ -671,7 +675,7 @@ function loadFirebase(){
 function cloudSnap(){
   return {
     lists:state.lists.map(l=>({id:l.id,name:l.name,cur:l.cur,songs:l.songs.map(s=>({id:s.id,kind:s.kind,artist:s.artist,title:s.title,work:s.work||'',videoId:s.videoId,listId:s.listId,ci:0,noResult:s.noResult,dead:s.dead,at:s.at||0,auto:!!s.auto}))})),
-    activeId:state.activeId,shuffle:state.shuffle,repeat:state.repeat,apiKey:state.apiKey,suffix:state.suffix,keepAwake:state.keepAwake
+    activeId:state.activeId,shuffle:state.shuffle,repeat:state.repeat,times:state.times,apiKey:state.apiKey,suffix:state.suffix,keepAwake:state.keepAwake
   };
 }
 function hasLocalData(){ return !!state.apiKey||state.lists.some(l=>l.songs.length>0)||state.lists.length>1; }
@@ -1051,12 +1055,13 @@ function withPlayer(fn){
   if(playerReady){ try{ fn(); }catch(e){ toast('재생을 시작하지 못했어요. 다시 눌러 주세요.'); } }
   else{ pending=fn; ensurePlayer(); toast('플레이어를 준비하고 있어요…'); }
 }
-function playIndex(i){
+function playIndex(i,keep){
   const s=state.songs[i]; if(!s) return;
   if(!playable(s)){
     toast(s.dead?'이 곡은 재생할 수 없어요. 편집에서 다른 영상을 골라 보세요.':'이 곡은 아직 영상이 없어요. “영상 찾기”를 눌러 주세요.',4200);
     return;
   }
+  if(!keep) plays=0;
   state.cur=i; played.add(s.id); loadedId=s.id; liveTitle=''; save();
   render(); updateMediaSession();
   withPlayer(function(){
@@ -1106,11 +1111,17 @@ function onEnded(){
       const idx=player.getPlaylistIndex(), len=(player.getPlaylist()||[]).length;
       if(idx>=0&&len&&idx<len-1) return;
     }catch(e){}
-    if(state.repeat==='one'){ playIndex(state.cur); return; }
-  }else if(state.repeat==='one'){
-    try{ player.seekTo(0,true); player.playVideo(); }catch(e){}
-    return;
   }
+  /* 한 곡 반복: “반복: 한 곡”이면 계속, 아니면 ‘곡당 N회’만큼 듣고 다음 곡으로 */
+  let again=false;
+  if(state.repeat==='one'){ plays=0; again=true; }
+  else{ plays++; again=plays<state.times; }
+  if(again){
+    if(s.kind==='list') playIndex(state.cur,true);
+    else{ try{ player.seekTo(0,true); player.playVideo(); }catch(e){} }
+    updateModes(); return;
+  }
+  plays=0; updateModes();
   goNext(true);
 }
 function onError(e){
@@ -1334,6 +1345,14 @@ function removeSong(s){
   openRow=null;
   mutate(()=>{ state.songs=state.songs.filter(x=>x.id!==s.id); });
 }
+function updateModes(){
+  const rl={all:'반복: 전체',one:'반복: 한 곡',off:'반복: 끔'};
+  $('#btnRepeat').textContent=rl[state.repeat]; $('#btnRepeat').setAttribute('aria-pressed',String(state.repeat!=='off'));
+  const t=state.times, one=state.repeat==='one', bt=$('#btnTimes'), cs=curSong();
+  const on=!!cs&&loadedId===cs.id;
+  bt.textContent=one?'곡당 ∞':'곡당 '+t+'회'+(t>1&&on?' · '+Math.min(plays+1,t)+'/'+t:'');
+  bt.setAttribute('aria-pressed',String(t>1&&!one)); bt.disabled=one;
+}
 function render(){
   const list=$('#list'); list.textContent='';
   const frag=document.createDocumentFragment();
@@ -1346,8 +1365,7 @@ function render(){
   $('#btnCopy').hidden=n===0; $('#btnClear').hidden=n===0;
   $('#keyHint').hidden=!!state.apiKey;
   $('#btnShuffle').setAttribute('aria-pressed',String(state.shuffle));
-  const rl={all:'반복: 전체',one:'반복: 한 곡',off:'반복: 끔'};
-  $('#btnRepeat').textContent=rl[state.repeat]; $('#btnRepeat').setAttribute('aria-pressed',String(state.repeat!=='off'));
+  updateModes();
   renderLists(); renderGuestBar(); updateNow(); updateScreen(); syncPlayState();
 }
 
@@ -1423,7 +1441,7 @@ const SUGGEST=['트로트','발라드','7080 가요','민요','팝송','찬송�
 
 function stopPlayback(){
   try{ if(player&&playerReady) player.stopVideo(); }catch(e){}
-  loadedId=null; playing=false; liveTitle=''; releaseAwake(); history=[]; played=new Set();
+  loadedId=null; playing=false; liveTitle=''; releaseAwake(); history=[]; played=new Set(); plays=0;
 }
 function closePanels(){
   $('#nameForm').hidden=true; $('#sharePanel').hidden=true; $('#importPanel').hidden=true;
@@ -1682,7 +1700,11 @@ function bind(){
     toast(state.shuffle?'섞어서 들어요.':'목록 순서대로 들어요.',2000);
   });
   $('#btnRepeat').addEventListener('click',()=>{
-    state.repeat={all:'one',one:'off',off:'all'}[state.repeat]; save(); render();
+    state.repeat={all:'one',one:'off',off:'all'}[state.repeat]; plays=0; save(); render();
+  });
+  $('#btnTimes').addEventListener('click',()=>{
+    state.times=TIMES[(TIMES.indexOf(state.times)+1)%TIMES.length]; plays=0; save(); render();
+    toast(state.times>1?'한 곡을 '+state.times+'번 듣고 다음 곡으로 넘어가요.':'한 곡씩 한 번만 들어요.',2400);
   });
   const seek=$('#seek');
   seek.addEventListener('input',()=>{
