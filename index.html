@@ -144,6 +144,16 @@ textarea::placeholder,input::placeholder{color:var(--muted);opacity:.75}
 .hint{margin:0;font-size:14px;color:var(--muted)}
 .add-actions{display:flex;gap:10px;flex-wrap:wrap}
 .add-actions .primary{flex:1 1 180px}
+.add-form{display:grid;gap:12px}
+.f{display:grid;gap:5px}
+.f label{font-weight:700}
+.f em{font-style:normal;font-weight:500;font-size:13px;color:var(--muted);margin-left:6px}
+.f input{width:100%}
+.bulk summary{font-weight:700;cursor:pointer;min-height:28px}
+.bulk-body{display:grid;gap:12px;margin-top:12px}
+.edit-fields{display:grid;gap:8px}
+.edit-fields .f label{font-size:14px}
+.edit-fields input{min-height:44px;font-size:16px}
 
 /* 설정 */
 .sheet{position:fixed;inset:0;z-index:50;background:var(--bg);overflow:auto;
@@ -314,13 +324,33 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
   <section class="add no-view" aria-labelledby="ah">
     <h2 id="ah">곡 추가</h2>
     <p id="addTarget" class="hint"></p>
-    <label class="sr" for="addText">노래제목과 가수 또는 유튜브 링크</label>
-    <textarea id="addText" rows="5" spellcheck="false" placeholder="모래 알갱이 - 임영웅&#10;엄마아리랑 - 송가인&#10;어머나 - 장윤정&#10;홍시 - 나훈아"></textarea>
-    <p class="hint"><b>입력 규칙</b> · 한 줄에 한 곡, <b>“노래제목 - 가수”</b> 순서로 적어 주세요. 하이픈(-) 앞뒤는 한 칸씩 띄웁니다. 가수를 모르면 제목만 적어도 돼요. 유튜브 영상·재생목록 링크도 그대로 붙여넣을 수 있어요.</p>
-    <div class="add-actions">
-      <button id="btnAdd" class="btn primary" type="button">목록에 추가</button>
-      <button id="btnExample" class="btn" type="button">예시 넣기</button>
-    </div>
+    <form id="addForm" class="add-form" autocomplete="off" novalidate>
+      <div class="f">
+        <label for="fTitle">노래제목 <em>꼭 적기</em></label>
+        <input id="fTitle" type="text" enterkeyhint="next" placeholder="예: 모래 알갱이">
+      </div>
+      <div class="f">
+        <label for="fArtist">가수 <em>적으면 영상을 더 정확히 찾아요</em></label>
+        <input id="fArtist" type="text" enterkeyhint="next" placeholder="예: 임영웅">
+      </div>
+      <div class="f">
+        <label for="fWork">작품 <em>선택 · 드라마·영화·앨범·방송 이름</em></label>
+        <input id="fWork" type="text" enterkeyhint="done" placeholder="예: 미스터트롯">
+      </div>
+      <button id="btnAddOne" class="btn primary" type="submit">목록에 추가</button>
+    </form>
+    <details class="bulk" id="bulk">
+      <summary>여러 곡을 한꺼번에 · 유튜브 링크로 추가</summary>
+      <div class="bulk-body">
+        <label class="sr" for="addText">노래제목과 가수 또는 유튜브 링크</label>
+        <textarea id="addText" rows="5" spellcheck="false" placeholder="모래 알갱이 - 임영웅&#10;엄마아리랑 - 송가인&#10;어머나 - 장윤정 [작품 이름]&#10;https://youtu.be/…"></textarea>
+        <p class="hint"><b>입력 규칙</b> · 한 줄에 한 곡, <b>“노래제목 - 가수”</b> 순서로 적어요. 하이픈(-) 앞뒤는 한 칸씩 띄우고, 작품은 끝에 <b>[작품]</b> 으로 붙여요. 제목만 적어도 되고, 유튜브 영상·재생목록 링크도 그대로 붙여넣을 수 있어요.</p>
+        <div class="add-actions">
+          <button id="btnAdd" class="btn primary" type="button">목록에 추가</button>
+          <button id="btnExample" class="btn" type="button">예시 넣기</button>
+        </div>
+      </div>
+    </details>
     <div id="keyHint" class="notice" hidden>
       API 키가 없으면 가수·제목으로 영상을 찾을 수 없어요. 유튜브 링크는 키 없이도 바로 재생돼요.
       <br><button id="btnHintSettings" class="btn small" type="button">설정 열기</button>
@@ -432,15 +462,18 @@ function parseYouTubeUrl(raw){
 
 function parseName(t){
   t=String(t||'').replace(/\s+/g,' ').trim();
-  if(!t) return {artist:'',title:''};
+  if(!t) return {artist:'',title:'',work:''};
+  let work='';
+  const wm=t.match(/\s*\[([^\]]+)\]\s*$/);
+  if(wm&&wm.index>0){ work=wm[1].trim(); t=t.slice(0,wm.index).trim(); }
   /* 규칙: “노래제목 - 가수” (앞이 제목, 뒤가 가수). 구분은 띄어쓴 하이픈, 없으면 / 또는 | 를 쓴다.
      제목 안에 하이픈이 있어도 되도록 맨 마지막 구분자에서 나눈다. */
   function lastMatch(re){ let m,last=null; while((m=re.exec(t))) last=m; return last; }
   const m=lastMatch(/\s[-–—]\s/g)||lastMatch(/\s*[\/|]\s*/g);
   if(m && m.index>0 && m.index+m[0].length<t.length){
-    return {title:t.slice(0,m.index).trim(), artist:t.slice(m.index+m[0].length).trim()};
+    return {title:t.slice(0,m.index).trim(), artist:t.slice(m.index+m[0].length).trim(), work:work};
   }
-  return {artist:'',title:t};
+  return {artist:'',title:t,work:work};
 }
 
 function parseLines(text){
@@ -452,16 +485,16 @@ function parseLines(text){
     if(um){ yt=parseYouTubeUrl(um[0]); rest=line.replace(um[0],' ').trim(); }
     if(um && !yt){ out.push({bad:line}); return; }
     const n=parseName(rest);
-    if(yt && yt.listId){ out.push({kind:'list',listId:yt.listId,artist:n.artist,title:n.title}); return; }
-    if(yt && yt.videoId){ out.push({kind:'video',videoId:yt.videoId,artist:n.artist,title:n.title}); return; }
-    out.push({kind:'video',artist:n.artist,title:n.title});
+    if(yt && yt.listId){ out.push({kind:'list',listId:yt.listId,artist:n.artist,title:n.title,work:n.work}); return; }
+    if(yt && yt.videoId){ out.push({kind:'video',videoId:yt.videoId,artist:n.artist,title:n.title,work:n.work}); return; }
+    out.push({kind:'video',artist:n.artist,title:n.title,work:n.work});
   });
   return out;
 }
 
 /* 공유 링크: 목록 → 작은 JSON → (가능하면 압축) → 주소에 쓸 수 있는 글자 */
 function packList(name,songs,mode){
-  return {v:1,n:name,m:mode==='view'?'r':'e',s:songs.map(s=>[s.artist||'',s.title||'',s.kind==='list'?'':(s.videoId||''),s.kind==='list'?(s.listId||''):''])};
+  return {v:1,n:name,m:mode==='view'?'r':'e',s:songs.map(s=>[s.artist||'',s.title||'',s.kind==='list'?'':(s.videoId||''),s.kind==='list'?(s.listId||''):'',s.work||''])};
 }
 function sanitizeShared(o){
   if(!o||typeof o!=='object'||o.v!==1||!Array.isArray(o.s)) return null;
@@ -469,12 +502,12 @@ function sanitizeShared(o){
   const songs=[];
   for(const it of o.s.slice(0,500)){
     if(!Array.isArray(it)) continue;
-    const artist=clip(it[0],80), title=clip(it[1],120);
+    const artist=clip(it[0],80), title=clip(it[1],120), work=clip(it[4],60);
     let videoId=clip(it[2],20), listId=clip(it[3],80);
     if(!/^[\w-]{11}$/.test(videoId)) videoId='';
     if(!/^[\w-]{10,64}$/.test(listId)) listId='';
-    if(listId) songs.push({kind:'list',artist:artist,title:title,listId:listId});
-    else if(videoId||artist||title) songs.push({kind:'video',artist:artist,title:title,videoId:videoId});
+    if(listId) songs.push({kind:'list',artist:artist,title:title,work:work,listId:listId});
+    else if(videoId||artist||title) songs.push({kind:'video',artist:artist,title:title,work:work,videoId:videoId});
   }
   if(!songs.length) return null;
   return {name:clip(o.n,30)||'공유받은 목록',songs:songs,mode:o.m==='r'?'view':'edit'};
@@ -535,7 +568,7 @@ let liveTitle='', openRow=null, finding=false, seeking=false, played=new Set(), 
 
 function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
 function makeSong(p){
-  return {id:uid(),kind:p.kind==='list'?'list':'video',artist:p.artist||'',title:p.title||'',
+  return {id:uid(),kind:p.kind==='list'?'list':'video',artist:p.artist||'',title:p.title||'',work:String(p.work||'').slice(0,60),
     videoId:p.videoId||'',listId:p.listId||'',cands:[],ci:0,noResult:false,dead:false};
 }
 function normalize(s){
@@ -627,7 +660,7 @@ function loadFirebase(){
 }
 function cloudSnap(){
   return {
-    lists:state.lists.map(l=>({id:l.id,name:l.name,cur:l.cur,songs:l.songs.map(s=>({id:s.id,kind:s.kind,artist:s.artist,title:s.title,videoId:s.videoId,listId:s.listId,ci:0,noResult:s.noResult,dead:s.dead}))})),
+    lists:state.lists.map(l=>({id:l.id,name:l.name,cur:l.cur,songs:l.songs.map(s=>({id:s.id,kind:s.kind,artist:s.artist,title:s.title,work:s.work||'',videoId:s.videoId,listId:s.listId,ci:0,noResult:s.noResult,dead:s.dead}))})),
     activeId:state.activeId,shuffle:state.shuffle,repeat:state.repeat,apiKey:state.apiKey,suffix:state.suffix,keepAwake:state.keepAwake
   };
 }
@@ -754,7 +787,8 @@ function titleOf(s){
   if(s.kind==='list') return s.title||'유튜브 재생목록';
   return s.title||(s.videoId?'유튜브 영상':'(이름 없음)');
 }
-function queryOf(s){ return [s.artist,s.title,state.suffix].filter(Boolean).join(' ').trim(); }
+function queryOf(s){ return [s.artist||s.work,s.title,state.suffix].filter(Boolean).join(' ').trim(); }
+function artistWork(s){ return [s.artist,s.work].filter(Boolean).join(' · '); }
 
 /* 상태를 바꾸는 동안에도 지금 곡을 id로 따라가기 */
 function mutate(fn){
@@ -977,7 +1011,7 @@ function playIndex(i){
   });
 }
 function togglePlay(){
-  if(!state.songs.length){ toast('먼저 곡을 추가해 주세요.'); $('#addText').focus(); return; }
+  if(!state.songs.length){ toast('먼저 곡을 추가해 주세요.'); $('#fTitle').focus(); return; }
   const s=curSong();
   if(!s||loadedId!==s.id){
     const i=playable(s)?state.cur:firstPlayable();
@@ -1076,7 +1110,7 @@ function updateNow(){
   const s=curSong(), t=$('#nowTitle'), a=$('#nowArtist');
   if(!s){ t.textContent='재생할 곡을 골라 주세요'; a.textContent=''; return; }
   if(s.kind==='list'){ t.textContent=liveTitle||titleOf(s); a.textContent='재생목록 통째로 재생'; return; }
-  t.textContent=titleOf(s); a.textContent=s.artist||'';
+  t.textContent=titleOf(s); a.textContent=artistWork(s);
 }
 function updateScreen(){
   const m=$('#screenMsg');
@@ -1103,7 +1137,7 @@ function subInfo(s){
     if(s.noResult) return {text:'검색 결과 없음 · 편집에서 다시 검색',bad:true};
     return {text:state.apiKey?'영상 찾기 전':'영상 없음 · API 키가 필요해요',bad:false};
   }
-  return {text:s.artist||'',bad:false};
+  return {text:artistWork(s),bad:false};
 }
 function rowEl(s,i){
   const isCur=i===state.cur;
@@ -1203,6 +1237,19 @@ function panelEl(s,i){
     });
     p.append(ul);
   }
+  const mkf=(label,val,max)=>{ const inp=h('input',{type:'text',maxlength:max,value:val||'',autocomplete:'off'}); return {inp:inp,el:h('div',{class:'f'},h('label',null,label),inp)}; };
+  const fT=mkf('노래제목',s.title,120), fA=mkf('가수',s.artist,80), fW=mkf('작품',s.work,60);
+  const saveInfo=h('button',{class:'btn small',type:'button'},'정보 저장');
+  saveInfo.addEventListener('click',()=>{
+    const cl=x=>String(x||'').replace(/\s+/g,' ').trim();
+    const t=cl(fT.inp.value), a=cl(fA.inp.value), w=cl(fW.inp.value);
+    if(!t&&!s.videoId&&!s.listId){ toast('노래제목을 적어 주세요.'); return; }
+    const changed=t!==s.title||a!==s.artist;
+    s.title=t; s.artist=a; s.work=w;
+    if(changed&&!s.videoId) s.noResult=false;
+    save(); render(); toast('정보를 저장했어요.',2000);
+  });
+  p.append(h('div',{class:'edit-fields'},fT.el,fA.el,fW.el,saveInfo));
   const act=h('div',{class:'panel-actions'});
   if(s.kind==='video'&&(s.artist||s.title)){
     const b=h('button',{class:'btn small',type:'button'},'다시 검색');
@@ -1265,13 +1312,31 @@ function onAdd(){
   const box=$('#addText');
   const parsed=parseLines(box.value);
   if(!parsed.length){ toast('추가할 곡을 한 줄에 하나씩 적어 주세요.'); box.focus(); return; }
+  addParsed(parsed); box.value='';
+}
+function onAddOne(){
+  if(readOnly()) return;
+  const clean=x=>String(x||'').replace(/\s+/g,' ').trim();
+  const title=clean($('#fTitle').value), artist=clean($('#fArtist').value), work=clean($('#fWork').value);
+  if(!title){ toast('노래제목을 적어 주세요.'); $('#fTitle').focus(); return; }
+  let p;
+  if(URL_RE.test(title)){
+    p=parseLines(title)[0];
+    if(!p||p.bad){ toast('알 수 없는 링크예요. 유튜브 주소를 확인해 주세요.'); return; }
+    if(artist) p.artist=artist;
+    if(work) p.work=work;
+  }else p={kind:'video',title:title,artist:artist,work:work};
+  addParsed([p]);
+  $('#fTitle').value=''; $('#fArtist').value=''; $('#fWork').value=''; $('#fTitle').focus();
+}
+function addParsed(parsed){
   let added=0,bad=0,dup=0; const fresh=[];
   parsed.forEach(p=>{
     if(p.bad){ bad++; return; }
     if(isDup(p)){ dup++; return; }
     const s=makeSong(p); state.songs.push(s); fresh.push(s); added++;
   });
-  box.value=''; save(); render();
+  save(); render();
   let msg=added+'곡을 추가했어요.';
   if(dup) msg+=' (이미 있는 곡 '+dup+'개 제외)';
   if(bad) msg+=' 알 수 없는 링크 '+bad+'개는 건너뛰었어요.';
@@ -1284,7 +1349,7 @@ function onAdd(){
 }
 function exportText(){
   return state.songs.map(s=>{
-    const name=[s.title,s.artist].filter(Boolean).join(' - ');
+    const name=[s.title,s.artist].filter(Boolean).join(' - ')+(s.work?' ['+s.work+']':'');
     if(s.kind==='list') return (name?name+' ':'')+'https://www.youtube.com/playlist?list='+s.listId;
     if(s.videoId) return (name?name+' ':'')+'https://youtu.be/'+s.videoId;
     return name;
@@ -1562,6 +1627,10 @@ function bind(){
     seeking=false;
   });
   $('#btnAdd').addEventListener('click',onAdd);
+  $('#addForm').addEventListener('submit',e=>{ e.preventDefault(); onAddOne(); });
+  [['#fTitle','#fArtist'],['#fArtist','#fWork']].forEach(pair=>{
+    $(pair[0]).addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $(pair[1]).focus(); } });
+  });
   $('#btnExample').addEventListener('click',()=>{
     const box=$('#addText');
     box.value=(box.value?box.value.replace(/\s*$/,'\n'):'')+'모래 알갱이 - 임영웅\n엄마아리랑 - 송가인\n어머나 - 장윤정\n막걸리 한잔 - 영탁\n홍시 - 나훈아';
