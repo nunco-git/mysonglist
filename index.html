@@ -73,7 +73,9 @@ h2{margin:0;font:400 22px/1.2 var(--font-display);letter-spacing:.01em}
 .screen-msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;background:#0c0711;color:var(--stage-muted);font-size:17px}
 .screen-msg p{margin:0;max-width:18em}
 .now{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
-.mode.this{min-height:34px;padding:0 11px;font-size:13px;white-space:nowrap}
+.mode.this{white-space:nowrap}
+.modes .mode{padding:0 7px;font-size:12.5px}
+.modes{gap:4px}
 .disc{
   position:relative;width:42px;height:42px;border-radius:50%;flex:none;
   background:repeating-radial-gradient(circle at center,#150b1a 0 2px,#2a1834 2px 3px);
@@ -241,7 +243,6 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
         <div id="nowTitle" class="now-title">재생할 곡을 골라 주세요</div>
         <div id="nowArtist" class="now-artist"></div>
       </div>
-      <button id="btnThis" class="mode this" type="button" aria-pressed="false" title="지금 나오는 곡만 몇 번 듣고 다음으로 넘어갈지 (이 곡에만 적용)">이번 곡만 반복</button>
     </div>
 
     <div class="seek">
@@ -267,6 +268,7 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
       <button id="btnShuffle" class="mode" type="button" aria-pressed="false">섞어서 듣기</button>
       <button id="btnRepeat" class="mode" type="button" aria-pressed="true">반복: 전체</button>
       <button id="btnTimes" class="mode" type="button" aria-pressed="false" title="한 곡을 몇 번 듣고 다음 곡으로 넘어갈지">곡당 1회</button>
+      <button id="btnThis" class="mode this" type="button" aria-pressed="false" title="지금 나오는 곡만 몇 번 듣고 다음으로 넘어갈지 (이 곡에만 적용)">이번 곡 반복</button>
     </div>
   </section>
 
@@ -1361,7 +1363,7 @@ function updateModes(){
   bt.textContent=one?'곡당 ∞':'곡당 '+t+'회'+(t>1&&on&&thisN<2?' · '+Math.min(plays+1,t)+'/'+t:'');
   bt.setAttribute('aria-pressed',String(t>1&&!one)); bt.disabled=one;
   const th=$('#btnThis'); if(!on) thisN=0;
-  th.textContent=one?'이번 곡 ∞':(thisN>1?'이번 곡만 '+thisN+'회 · '+Math.min(plays+1,thisN)+'/'+thisN:'이번 곡만 반복');
+  th.textContent=one?'이번 곡 ∞':(thisN>1?'이번 곡만 '+thisN+'회 · '+Math.min(plays+1,thisN)+'/'+thisN:'이번 곡 반복');
   th.setAttribute('aria-pressed',String(thisN>1&&!one)); th.disabled=one;
 }
 function render(){
