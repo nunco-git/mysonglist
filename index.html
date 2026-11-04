@@ -87,9 +87,9 @@ h2{margin:0;font:400 22px/1.2 var(--font-display);letter-spacing:.01em}
 .disc::after{content:"";position:absolute;inset:12px;border-radius:50%;background:var(--stage)}
 .disc.playing{animation:spin 3.4s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.now-text{min-width:0}
-.now-title{font:400 15px/1.25 var(--font-display);overflow-wrap:anywhere;text-wrap:balance}
-.now-artist{color:var(--stage-gold);font-weight:500;font-size:12px;margin-top:0;overflow-wrap:anywhere}
+.now-text{min-width:0;display:flex;align-items:baseline;gap:8px;overflow:hidden;white-space:nowrap}
+.now-title{font:400 15px/1.25 var(--font-display);flex:0 1 auto;min-width:0;max-width:62%;overflow:hidden;text-overflow:ellipsis}
+.now-artist{color:var(--stage-gold);font-weight:500;font-size:12px;margin-top:0;flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .ctrl{display:flex;align-items:center;gap:8px}
 .seek{flex:1;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:5px;align-items:center;font-size:11px;color:var(--stage-muted);font-variant-numeric:tabular-nums}
 .seek input{width:100%;height:20px;accent-color:var(--stage-pink);margin:0}
@@ -1192,6 +1192,7 @@ function updateNow(){
   if(!s){ t.textContent='재생할 곡을 골라 주세요'; a.textContent=''; return; }
   if(s.kind==='list'){ t.textContent=liveTitle||titleOf(s); a.textContent='재생목록 통째로 재생'; return; }
   t.textContent=titleOf(s); a.textContent=artistWork(s);
+  $('.now-text').title=t.textContent+(a.textContent?' · '+a.textContent:'');
 }
 function updateScreen(){
   const m=$('#screenMsg');
