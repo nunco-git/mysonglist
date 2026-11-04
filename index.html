@@ -104,6 +104,8 @@ h2{margin:0;font:400 22px/1.2 var(--font-display);letter-spacing:.01em}
 .sec-head .count{font:500 15px var(--font-body);color:var(--muted);margin-left:6px}
 .sec-actions{display:flex;flex-wrap:wrap;gap:8px}
 .find-bar{margin-bottom:12px}
+.ytopen{display:grid;gap:6px;margin:-2px 0 12px}
+.ytopen .btn{justify-self:start}
 .list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 6px;background:var(--surface);border:1.5px solid var(--line);border-radius:16px;padding:6px}
 .row.is-cur{border-color:var(--accent)}
@@ -366,6 +368,10 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
       </div>
     </div>
     <div id="findBar" class="notice find-bar" role="status" hidden></div>
+    <div class="ytopen" id="ytOpenBox" hidden>
+      <button id="btnYtOpen" class="btn small" type="button">▶ 유튜브 앱에서 이어 듣기</button>
+      <span class="hint">화면을 꺼도 듣고 싶을 때 · 유튜브 프리미엄/뮤직 가입 계정이 있으면 유튜브 앱에서 백그라운드 재생이 돼요 (최대 50곡)</span>
+    </div>
     <ol id="list" class="list"></ol>
     <p id="emptyMsg" class="empty-msg">아직 곡이 없어요. 위의 ‘곡 추가’ 버튼을 눌러 노래제목과 가수를 적어 보세요.</p>
   </section>
@@ -1368,6 +1374,7 @@ function render(){
   $('#emptyMsg').hidden=n>0;
   const bf=$('#btnFind'); bf.hidden=todo===0; bf.textContent='영상 찾기 ('+todo+')'; bf.disabled=finding;
   $('#btnCopy').hidden=n===0; $('#btnClear').hidden=n===0;
+  $('#ytOpenBox').hidden=!state.songs.some(ytPlayable);
   $('#keyHint').hidden=!!state.apiKey;
   $('#btnShuffle').setAttribute('aria-pressed',String(state.shuffle));
   updateModes();
@@ -1423,6 +1430,29 @@ function addParsed(parsed){
     else toast('API 키를 넣으면 가수·제목으로 영상을 자동으로 찾아요.',5000);
   }
   enrich(fresh);
+}
+/* 유튜브 앱으로 이어 듣기: 지금 곡부터 최대 50곡을 유튜브 공식 임시 재생목록 주소로 연다 */
+function ytPlayable(s){ return !!s&&s.kind==='video'&&!s.dead&&/^[\w-]{11}$/.test(s.videoId||''); }
+function ytOpenUrl(){
+  const all=state.songs, n=all.length; if(!n) return null;
+  const start=state.cur>=0&&state.cur<n?state.cur:0;
+  const ids=[]; let total=0;
+  for(let k=0;k<n;k++){
+    const sg=all[(start+k)%n];
+    if(!ytPlayable(sg)) continue;
+    total++;
+    if(ids.length<50&&ids.indexOf(sg.videoId)<0) ids.push(sg.videoId);
+  }
+  if(!ids.length) return null;
+  return {url:'https://www.youtube.com/watch_videos?video_ids='+ids.join(','),count:ids.length,total:total};
+}
+function openInYouTube(){
+  const r=ytOpenUrl();
+  if(!r){ toast('유튜브로 열 수 있는 곡이 없어요. 영상을 먼저 찾아 주세요.',3500); return; }
+  try{ if(player&&playerReady) player.pauseVideo(); }catch(e){}
+  const w=window.open(r.url,'_blank','noopener,noreferrer');
+  if(!w) location.href=r.url;
+  toast(r.count+'곡을 유튜브에서 열어요.'+(r.total>r.count?' (50곡까지만 열려요)':'')+' 앱으로 열리지 않으면 유튜브 앱에서 열기를 선택해 주세요.',6000);
 }
 function exportText(){
   return state.songs.map(s=>{
@@ -1738,6 +1768,7 @@ function bind(){
     box.focus();
   });
   $('#btnFind').addEventListener('click',findAll);
+  $('#btnYtOpen').addEventListener('click',openInYouTube);
   $('#btnCopy').addEventListener('click',async()=>{
     toast(await copyText(exportText())?'목록을 복사했어요. 메모장 등에 붙여 두면 백업이 돼요.':'복사하지 못했어요.',3800);
   });
