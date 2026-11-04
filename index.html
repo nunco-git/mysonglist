@@ -74,6 +74,8 @@ h2{margin:0;font:400 22px/1.2 var(--font-display);letter-spacing:.01em}
 .screen-msg p{margin:0;max-width:18em}
 .now{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
 .mode.this{white-space:nowrap}
+.mode.pin{min-height:34px;padding:0 10px;font-size:13px;white-space:nowrap}
+.stage.pinned{position:sticky;top:max(6px,env(safe-area-inset-top));z-index:30;box-shadow:0 6px 18px rgba(0,0,0,.35)}
 .modes .mode{padding:0 7px;font-size:12.5px}
 .modes{gap:4px}
 .disc{
@@ -243,6 +245,7 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
         <div id="nowTitle" class="now-title">재생할 곡을 골라 주세요</div>
         <div id="nowArtist" class="now-artist"></div>
       </div>
+      <button id="btnPin" class="mode pin" type="button" aria-pressed="false" title="스크롤해도 재생창을 화면 위에 고정">📌 고정</button>
     </div>
 
     <div class="seek">
@@ -303,7 +306,7 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
         <div class="bulk-body">
           <label class="sr" for="addText">노래제목과 가수 또는 유튜브 링크</label>
           <textarea id="addText" rows="5" spellcheck="false" placeholder="모래 알갱이 - 임영웅&#10;엄마아리랑 - 송가인&#10;어머나 - 장윤정 [작품 이름]&#10;https://youtu.be/…"></textarea>
-          <p class="hint"><b>입력 규칙</b> · 한 줄에 한 곡, <b>“노래제목 - 가수”</b> 순서로 적어요. 하이픈(-) 앞뒤는 한 칸씩 띄우고, 작품은 끝에 <b>[작품]</b> 으로 붙여요. 제목만 적어도 되고, 유튜브 영상·재생목록 링크도 그대로 붙여넣을 수 있어요.</p>
+          <p class="hint">한 줄에 한 곡 · <b>노래제목 - 가수 [작품]</b> · 유튜브 링크도 가능</p>
           <div class="add-actions">
             <button id="btnAdd" class="btn primary" type="button">목록에 추가</button>
             <button id="btnExample" class="btn" type="button">예시 넣기</button>
@@ -372,10 +375,10 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
     <div id="findBar" class="notice find-bar" role="status" hidden></div>
     <div class="ytopen" id="ytOpenBox" hidden>
       <button id="btnYtOpen" class="btn small" type="button">▶ 유튜브 앱에서 이어 듣기</button>
-      <span class="hint">화면을 꺼도 듣고 싶을 때 · 유튜브 프리미엄/뮤직 가입 계정이 있으면 유튜브 앱에서 백그라운드 재생이 돼요 (최대 50곡)</span>
+      <span class="hint">프리미엄/뮤직 가입 시 화면을 꺼도 재생 · 최대 50곡</span>
     </div>
     <ol id="list" class="list"></ol>
-    <p id="emptyMsg" class="empty-msg">아직 곡이 없어요. 위의 ‘곡 추가’ 버튼을 눌러 노래제목과 가수를 적어 보세요.</p>
+    <p id="emptyMsg" class="empty-msg">‘곡 추가’를 눌러 노래를 넣어 보세요.</p>
   </section>
 </div>
 
@@ -393,7 +396,7 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
         <button id="btnCloud" class="btn small" type="button">구글로 로그인</button>
         <button id="btnCloudSync" class="btn small" type="button" hidden>지금 동기화</button>
       </div>
-      <p class="hint">로그인하면 목록과 API 키가 내 구글 계정에 저장돼서, 어떤 폰·브라우저에서 로그인해도 똑같이 나와요.</p>
+      <p class="hint">목록과 API 키가 어디서 로그인해도 똑같이 나와요.</p>
     </div>
 
     <div class="field">
@@ -402,19 +405,19 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
         <input id="apiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="AIza로 시작하는 키">
         <button id="btnShowKey" class="btn small" type="button">보기</button>
       </div>
-      <p class="hint">로그인하지 않으면 이 폰의 브라우저에만 저장돼요.</p>
+      <p class="hint">로그인 안 하면 이 폰에만 저장돼요.</p>
       <p id="usage" class="hint"></p>
-      <p class="hint">유튜브 규정에 따라 API로 받은 영상 정보는 30일마다 자동으로 새로 확인해요. 이때 후보 영상 목록은 지워지고, 키가 있으면 영상이 아직 재생 가능한지도 다시 확인해요.</p>
+      <p class="hint">영상 정보는 유튜브 규정에 따라 30일마다 자동으로 새로 확인해요.</p>
     </div>
 
     <div class="field">
       <label for="suffix">검색어 뒤에 붙일 말 (선택)</label>
       <input id="suffix" type="text" autocomplete="off" placeholder="예: 공식, MV, 가사">
-      <p class="hint">비워 두면 “가수 제목”만 검색해요. 엉뚱한 영상이 자주 나오면 여기에 말을 붙여 보세요.</p>
+      <p class="hint">엉뚱한 영상이 자주 나올 때 써 보세요.</p>
     </div>
 
     <label class="switch"><input id="keepAwake" type="checkbox"> 재생 중에는 화면을 켜 두기</label>
-    <p class="hint">폰 화면이 꺼지면 유튜브 재생이 멈추는 기기가 많아요. 켜 두면 배터리를 더 써요.</p>
+    <p class="hint">화면이 꺼지면 재생이 멈추는 폰이 많아요. 배터리를 더 써요.</p>
 
     <details>
       <summary>API 키 받는 법</summary>
@@ -575,7 +578,7 @@ function fmtTime(sec){ sec=Math.max(0,Math.floor(sec||0)); const m=Math.floor(se
 /*PURE-END*/
 
 /* ---------- 상태 ---------- */
-const state={lists:[],activeId:'',shuffle:false,repeat:'all',times:1,apiKey:'',suffix:'',keepAwake:true,usage:{d:'',n:0}};
+const state={lists:[],activeId:'',shuffle:false,repeat:'all',times:1,apiKey:'',suffix:'',keepAwake:true,pin:false,usage:{d:'',n:0}};
 function makeList(name){ return {id:uid(),name:name,songs:[],cur:-1}; }
 let guest=null; /* 수정 불가로 받은 목록(저장 안 됨) */
 function activeList(){ if(guest) return guest; return state.lists.find(l=>l.id===state.activeId)||state.lists[0]; }
@@ -632,6 +635,7 @@ function applyData(d){
     state.apiKey=typeof d.apiKey==='string'?d.apiKey:'';
     state.suffix=typeof d.suffix==='string'?d.suffix:'';
     state.keepAwake=d.keepAwake!==false;
+    state.pin=d.pin===true;
     if(d.usage&&typeof d.usage.d==='string') state.usage={d:d.usage.d,n:+d.usage.n||0};
   }catch(e){}
 }
@@ -653,7 +657,7 @@ function save(){
   if(!guest) markDirty();
 }
 function saveLocal(){
-  try{ localStorage.setItem(LS_KEY,JSON.stringify({lists:state.lists.map(l=>({id:l.id,name:l.name,songs:l.songs,cur:l.cur})),activeId:state.activeId,shuffle:state.shuffle,repeat:state.repeat,times:state.times,apiKey:state.apiKey,suffix:state.suffix,keepAwake:state.keepAwake,usage:state.usage})); }catch(e){}
+  try{ localStorage.setItem(LS_KEY,JSON.stringify({lists:state.lists.map(l=>({id:l.id,name:l.name,songs:l.songs,cur:l.cur})),activeId:state.activeId,shuffle:state.shuffle,repeat:state.repeat,times:state.times,apiKey:state.apiKey,suffix:state.suffix,keepAwake:state.keepAwake,pin:state.pin,usage:state.usage})); }catch(e){}
 }
 
 
@@ -1366,6 +1370,11 @@ function updateModes(){
   th.textContent=one?'이번 곡 ∞':(thisN>1?'이번 곡만 '+thisN+'회 · '+Math.min(plays+1,thisN)+'/'+thisN:'이번 곡 반복');
   th.setAttribute('aria-pressed',String(thisN>1&&!one)); th.disabled=one;
 }
+function applyPin(){
+  const on=!!state.pin;
+  document.querySelector('.stage').classList.toggle('pinned',on);
+  const b=$('#btnPin'); b.setAttribute('aria-pressed',String(on)); b.textContent=on?'📌 고정됨':'📌 고정';
+}
 function render(){
   const list=$('#list'); list.textContent='';
   const frag=document.createDocumentFragment();
@@ -1555,8 +1564,8 @@ function deleteList(){
 /* 공유 보내기 */
 let shareMode='view', shareToken=0;
 const MODE_DESC={
-  view:'수정 불가: 받는 사람은 듣기만 할 수 있어요. 곡 추가·삭제·순서 바꾸기가 안 되고, 받는 사람 폰에는 저장되지 않아서 링크를 열 때마다 목록이 나와요. 영상을 못 찾은 곡은 빠져요.',
-  edit:'수정 가능: 받는 사람에게는 이 목록 하나만 보이고, 곡 추가·삭제·순서 바꾸기를 할 수 있어요. 받는 사람의 다른 목록은 보이지 않아요. 고친 내용은 받는 사람 폰에만 저장되고 내 목록에는 영향이 없어요.'
+  view:'수정 불가: 받는 사람은 듣기만 가능하고 저장되지 않아요. 영상을 못 찾은 곡은 빠져요.',
+  edit:'수정 가능: 이 목록 하나만 보내고, 받는 사람이 고친 내용은 내 목록에 영향이 없어요.'
 };
 async function openShare(){
   if(guest) return;
@@ -1771,6 +1780,8 @@ function bind(){
   });
   $('#btnFind').addEventListener('click',findAll);
   $('#btnYtOpen').addEventListener('click',openInYouTube);
+  $('#btnPin').addEventListener('click',()=>{ state.pin=!state.pin; saveLocal(); applyPin(); });
+  applyPin();
   $('#btnCopy').addEventListener('click',async()=>{
     toast(await copyText(exportText())?'목록을 복사했어요. 메모장 등에 붙여 두면 백업이 돼요.':'복사하지 못했어요.',3800);
   });
