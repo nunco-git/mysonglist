@@ -279,6 +279,7 @@ body.guest-view .no-view,body.guest-view .sec-actions,body.guest-view .row-more,
       <button id="btnTimes" class="mode" type="button" aria-pressed="false" title="한 곡을 몇 번 듣고 다음 곡으로 넘어갈지">곡당 1회</button>
       <button id="btnThis" class="mode this" type="button" aria-pressed="false" title="지금 나오는 곡만 몇 번 듣고 다음으로 넘어갈지 (이 곡에만 적용)">이번 곡 반복</button>
       <button id="btnTop" class="mode" type="button" title="목록 맨 처음으로 이동">▲ 처음</button>
+      <button id="btnMid" class="mode" type="button" title="목록 가운데로 이동">● 중간</button>
       <button id="btnEnd" class="mode" type="button" title="목록 맨 끝으로 이동">▼ 끝</button>
     </div>
   </section>
@@ -1376,12 +1377,15 @@ function removeSong(s){
   openRow=null;
   mutate(()=>{ state.songs=state.songs.filter(x=>x.id!==s.id); });
 }
-function jumpList(end){
+function jumpList(where){
   const rows=$('#list').children; if(!rows.length) return;
-  const li=end?rows[rows.length-1]:rows[0];
+  const li=where==='end'?rows[rows.length-1]:where==='mid'?rows[Math.floor((rows.length-1)/2)]:rows[0];
   const st=document.querySelector('.stage'), pinned=st.classList.contains('pinned');
-  const gap=12, r=li.getBoundingClientRect();
-  const y=end?(r.bottom+window.scrollY-window.innerHeight+gap):(r.top+window.scrollY-(pinned?st.getBoundingClientRect().height+gap+6:gap));
+  const gap=12, r=li.getBoundingClientRect(), top0=pinned?st.getBoundingClientRect().height+gap+6:gap;
+  let y;
+  if(where==='end') y=r.bottom+window.scrollY-window.innerHeight+gap;
+  else if(where==='mid') y=r.top+window.scrollY-(top0+(window.innerHeight-top0-r.height)/2);
+  else y=r.top+window.scrollY-top0;
   window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
   li.classList.remove('flash'); void li.offsetWidth; li.classList.add('flash');
 }
@@ -1412,7 +1416,7 @@ function render(){
   const bf=$('#btnFind'); bf.hidden=todo===0; bf.textContent='영상 찾기 ('+todo+')'; bf.disabled=finding;
   $('#btnCopy').hidden=n===0; $('#btnClear').hidden=n===0;
   $('#ytOpenBox').hidden=!state.songs.some(ytPlayable);
-  $('#btnTop').disabled=$('#btnEnd').disabled=!state.songs.length;
+  $('#btnTop').disabled=$('#btnMid').disabled=$('#btnEnd').disabled=!state.songs.length;
   $('#keyHint').hidden=!!state.apiKey;
   $('#btnShuffle').setAttribute('aria-pressed',String(state.shuffle));
   updateModes();
@@ -1809,8 +1813,9 @@ function bind(){
   });
   $('#btnFind').addEventListener('click',findAll);
   $('#btnYtOpen').addEventListener('click',openInYouTube);
-  $('#btnTop').addEventListener('click',()=>jumpList(false));
-  $('#btnEnd').addEventListener('click',()=>jumpList(true));
+  $('#btnTop').addEventListener('click',()=>jumpList('top'));
+  $('#btnMid').addEventListener('click',()=>jumpList('mid'));
+  $('#btnEnd').addEventListener('click',()=>jumpList('end'));
   $('#btnPin').addEventListener('click',()=>{ state.pin=!state.pin; saveLocal(); applyPin(); });
   applyPin();
   $('#btnCopy').addEventListener('click',async()=>{
