@@ -747,7 +747,7 @@ function cloudErr(e){
   const c=(e&&e.code)||'';
   if(c==='permission-denied') return '계정에 저장할 권한이 없어요. 파이어베이스 보안 규칙을 확인해 주세요.';
   if(c==='unavailable'||c==='auth/network-request-failed') return '인터넷 연결을 확인해 주세요. 연결되면 다시 저장돼요.';
-  if(c==='auth/unauthorized-domain') return '파이어베이스 승인된 도메인에 nunco-git.github.io 를 추가해야 해요.';
+  if(c==='auth/unauthorized-domain') return '파이어베이스 승인된 도메인에 '+location.hostname+' 을 추가해야 해요.';
   if(c==='auth/operation-not-allowed') return '파이어베이스에서 구글 로그인을 켜 주세요.';
   return '동기화 중 문제가 생겼어요'+(c?' ('+c+')':'')+'.';
 }
