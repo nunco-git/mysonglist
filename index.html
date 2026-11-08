@@ -785,7 +785,7 @@ async function pullCloud(manual){
     const dirty=lsGet(SYNC_DIRTY)==='1', lt=+lsGet(SYNC_T)||0;
     if(!snap.exists){ await pushCloud(); return; }
     const c=snap.data(), ct=+c.t||0;
-    if(ct===lt){ if(dirty) await pushCloud(); else{ syncMsg=fmtClock(ct)+' 최신'; renderCloud(); } return; }
+    if(ct===lt){ if(dirty) await pushCloud(); else{ syncMsg='방금 확인 · 계정 저장본 '+fmtClock(ct)+' (이 폰과 같음)'; renderCloud(); } return; }
     if(!manual&&(dirty||playing)) return;
     let useCloud=true;
     if(hasLocalData()&&(lt===0||dirty)){
